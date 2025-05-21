@@ -1,0 +1,35 @@
+Regras de Segurança do Firestore: Certifique-se de que suas regras de segurança no Firestore permitam leitura e escrita
+nas coleções artifacts/{appId}/public/data/{collectionName} para usuários autenticados (mesmo que anonimamente).
+Um exemplo simples para começar seria:
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /artifacts/{appId}/public/data/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+
+************* CONEXAO ******************
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyA2LYkRo6jxV7Za7DFW1Mmy_IFavSecInA",
+  authDomain: "controle-garantia.firebaseapp.com",
+  projectId: "controle-garantia",
+  storageBucket: "controle-garantia.firebasestorage.app",
+  messagingSenderId: "753625861980",
+  appId: "1:753625861980:web:d5c2423575d1d9c077fb99",
+  measurementId: "G-EM566F23CN"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);

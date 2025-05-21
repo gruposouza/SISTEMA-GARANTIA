@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Controle de Garantias - Auto Peças</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Light gray background */
+        }
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5); /* Dim background */
+        }
+        .modal-content {
+            background-color: #ffffff;
+            margin: 10% auto;
+            padding: 25px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px; /* Max width for larger screens */
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .table-responsive {
+            overflow-x: auto;
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .btn {
+            @apply py-2 px-4 rounded-md font-semibold text-white shadow-md transition-colors duration-150;
+        }
+        .btn-primary {
+            @apply bg-blue-600 hover:bg-blue-700;
+        }
+        .btn-secondary {
+            @apply bg-gray-500 hover:bg-gray-600;
+        }
+        .btn-danger {
+            @apply bg-red-600 hover:bg-red-700;
+        }
+        .btn-success {
+            @apply bg-green-600 hover:bg-green-700;
+        }
+        .input-field {
+            @apply mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm;
+        }
+        .form-label {
+            @apply block text-sm font-medium text-gray-700;
+        }
+        .card {
+            @apply bg-white shadow-lg rounded-lg p-6;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3; /* Light grey */
+            border-top: 4px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4">
+        <header class="bg-white shadow-md rounded-lg p-6 mb-6">
+            <div class="flex flex-col sm:flex-row justify-between items-center">
+                <h1 class="text-3xl font-bold text-blue-700">Sistema de Controle de Garantias</h1>
+                <div class="text-sm text-gray-600 mt-2 sm:mt-0">
+                    UserID: <span id="userIdDisplay" class="font-semibold">Carregando...</span>
+                </div>
+            </div>
+        </header>
+
+        <nav class="bg-white shadow-md rounded-lg mb-6">
+            <ul class="flex flex-wrap border-b border-gray-200">
+                <li class="mr-1">
+                    <button data-tab="dashboard" class="tab-button bg-white inline-block py-3 px-5 text-blue-600 hover:text-blue-800 font-semibold border-b-2 border-blue-600 rounded-t-lg">
+                        <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
+                    </button>
+                </li>
+                <li class="mr-1">
+                    <button data-tab="products" class="tab-button text-gray-600 hover:text-blue-700 inline-block py-3 px-5 font-semibold rounded-t-lg">
+                        <i class="fas fa-box mr-2"></i>Produtos
+                    </button>
+                </li>
+                <li class="mr-1">
+                    <button data-tab="customers" class="tab-button text-gray-600 hover:text-blue-700 inline-block py-3 px-5 font-semibold rounded-t-lg">
+                        <i class="fas fa-users mr-2"></i>Clientes
+                    </button>
+                </li>
+                <li class="mr-1">
+                    <button data-tab="suppliers" class="tab-button text-gray-600 hover:text-blue-700 inline-block py-3 px-5 font-semibold rounded-t-lg">
+                        <i class="fas fa-truck mr-2"></i>Fornecedores
+                    </button>
+                </li>
+                <li class="mr-1">
+                    <button data-tab="mechanics" class="tab-button text-gray-600 hover:text-blue-700 inline-block py-3 px-5 font-semibold rounded-t-lg">
+                        <i class="fas fa-wrench mr-2"></i>Mecânicos
+                    </button>
+                </li>
+                <li>
+                    <button data-tab="warranties" class="tab-button text-gray-600 hover:text-blue-700 inline-block py-3 px-5 font-semibold rounded-t-lg">
+                        <i class="fas fa-shield-alt mr-2"></i>Garantias
+                    </button>
+                </li>
+            </ul>
+        </nav>
+
+        <main id="tabContentContainer">
+            <div id="dashboardContent" class="tab-content active card">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-700">Dashboard</h2>
+                <p class="text-gray-600">Bem-vindo ao Sistema de Controle de Garantias. Selecione uma aba para começar.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+                    <div class="bg-blue-100 p-4 rounded-lg shadow">
+                        <h3 class="font-semibold text-blue-700">Total de Produtos</h3>
+                        <p id="totalProducts" class="text-2xl">0</p>
+                    </div>
+                    <div class="bg-green-100 p-4 rounded-lg shadow">
+                        <h3 class="font-semibold text-green-700">Total de Clientes</h3>
+                        <p id="totalCustomers" class="text-2xl">0</p>
+                    </div>
+                    <div class="bg-yellow-100 p-4 rounded-lg shadow">
+                        <h3 class="font-semibold text-yellow-700">Garantias Ativas</h3>
+                        <p id="activeWarranties" class="text-2xl">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="productsContent" class="tab-content card">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-semibold text-gray-700">Gerenciar Produtos</h2>
+                    <button id="addProductBtn" class="btn btn-primary"><i class="fas fa-plus mr-2"></i>Adicionar Produto</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="min-w-full bg-white">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cód. Peça</th>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fornecedor</th>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preço Venda</th>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Garantia</th>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productsTableBody" class="divide-y divide-gray-200">
+                            <tr><td colspan="6" class="text-center py-4"><div class="loading-spinner"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="customersContent" class="tab-content card">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-semibold text-gray-700">Gerenciar Clientes</h2>
+                    <button id="addCustomerBtn" class="btn btn-primary"><i class="fas fa-user-plus mr-2"></i>Adicionar Cliente</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="min-w-full bg-white">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CPF</th>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telefone</th>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customersTableBody" class="divide-y divide-gray-200">
+                            <tr><td colspan="5" class="text-center py-4"><div class="loading-spinner"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="suppliersContent" class="tab-content card">
+                 <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-semibold text-gray-700">Gerenciar Fornecedores</h2>
+                    <button id="addSupplierBtn" class="btn btn-primary"><i class="fas fa-plus-circle mr-2"></i>Adicionar Fornecedor</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="min-w-full bg-white">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CNPJ</th>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telefone</th>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="suppliersTableBody" class="divide-y divide-gray-200">
+                           <tr><td colspan="5" class="text-center py-4"><div class="loading-spinner"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="mechanicsContent" class="tab-content card">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-semibold text-gray-700">Gerenciar Mecânicos</h2>
+                    <button id="addMechanicBtn" class="btn btn-primary"><i class="fas fa-user-cog mr-2"></i>Adicionar Mecânico</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="min-w-full bg-white">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CPF/CNPJ</th>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telefone</th>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Oficina</th>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mechanicsTableBody" class="divide-y divide-gray-200">
+                            <tr><td colspan="5" class="text-center py-4"><div class="loading-spinner"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="warrantiesContent" class="tab-content card">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-semibold text-gray-700">Gerenciar Garantias</h2>
+                    <button id="addWarrantyBtn" class="btn btn-primary"><i class="fas fa-plus-square mr-2"></i>Registrar Garantia</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="min-w-full bg-white">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data Venda</th>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="warrantiesTableBody" class="divide-y divide-gray-200">
+                            <tr><td colspan="5" class="text-center py-4"><div class="loading-spinner"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="formModal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modalTitle" class="text-xl font-semibold"></h3>
+                <button id="closeModalBtn" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <form id="genericForm">
+                </form>
+            <div id="formFeedback" class="mt-3 text-sm"></div>
+        </div>
+    </div>
+
+    <div id="confirmModal" class="modal">
+        <div class="modal-content max-w-sm">
+            <h3 id="confirmModalTitle" class="text-lg font-semibold mb-4">Confirmar Ação</h3>
+            <p id="confirmModalMessage" class="mb-6 text-gray-700"></p>
+            <div class="flex justify-end space-x-3">
+                <button id="confirmModalCancelBtn" class="btn btn-secondary">Cancelar</button>
+                <button id="confirmModalConfirmBtn" class="btn btn-danger">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="messageModal" class="modal">
+        <div class="modal-content max-w-sm">
+             <div class="flex justify-between items-center mb-4">
+                <h3 id="messageModalTitle" class="text-lg font-semibold">Mensagem</h3>
+                <button id="messageModalCloseBtn" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <p id="messageModalText" class="text-gray-700 mb-4"></p>
+            <div class="flex justify-end">
+                <button id="messageModalOkBtn" class="btn btn-primary">OK</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        // Firebase SDKs
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Firebase Configuration ---
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        let app;
+        let auth;
+        let db;
+        let userId = null;
+        let isAuthReady = false;
+
+        // --- Initialize Firebase and Auth ---
+        async function initializeFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('debug'); // Firestore logging
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        console.log("User is signed in:", user.uid);
+                        userId = user.uid;
+                        document.getElementById('userIdDisplay').textContent = userId;
+                    } else {
+                        console.log("User is signed out. Attempting to sign in.");
+                        try {
+                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                                console.log("Attempting sign in with custom token.");
+                                await signInWithCustomToken(auth, __initial_auth_token);
+                            } else {
+                                console.log("Attempting anonymous sign in.");
+                                await signInAnonymously(auth);
+                            }
+                        } catch (error) {
+                            console.error("Error during sign-in:", error);
+                            document.getElementById('userIdDisplay').textContent = "Erro de autenticação";
+                            showModalMessage("Erro de Autenticação", `Não foi possível autenticar: ${error.message}`);
+                        }
+                    }
+                    isAuthReady = true;
+                    // Once auth is ready, load initial data for the active tab
+                    loadCurrentTabData();
+                    loadDashboardData();
+                });
+
+            } catch (error) {
+                console.error("Error initializing Firebase:", error);
+                showModalMessage("Erro de Inicialização", `Firebase não pôde ser inicializado: ${error.message}. Verifique a configuração.`);
+                document.getElementById('userIdDisplay').textContent = "Falha na inicialização";
+            }
+        }
+
+
+        // --- Global Variables & DOM Elements ---
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const modal = document.getElementById('formModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const genericForm = document.getElementById('genericForm');
+        const modalTitle = document.getElementById('modalTitle');
+        const formFeedback = document.getElementById('formFeedback');
+
+        const confirmModal = document.getElementById('confirmModal');
+        const confirmModalTitle = document.getElementById('confirmModalTitle');
+        const confirmModalMessage = document.getElementById('confirmModalMessage');
+        const confirmModalCancelBtn = document.getElementById('confirmModalCancelBtn');
+        const confirmModalConfirmBtn = document.getElementById('confirmModalConfirmBtn');
+        let confirmCallback = null;
+
+        const messageModal = document.getElementById('messageModal');
+        const messageModalTitle = document.getElementById('messageModalTitle');
+        const messageModalText = document.getElementById('messageModalText');
+        const messageModalCloseBtn = document.getElementById('messageModalCloseBtn');
+        const messageModalOkBtn = document.getElementById('messageModalOkBtn');
+
+        // --- Collections ---
+        const COLLECTIONS = {
+            PRODUCTS: 'products',
+            CUSTOMERS: 'customers',
+            SUPPLIERS: 'suppliers',
+            MECHANICS: 'mechanics',
+            WARRANTIES: 'warranties'
+        };
+
+        function getCollectionPath(collectionName) {
+            return `artifacts/${appId}/public/data/${collectionName}`;
+        }
+
+        // --- Modal Management ---
+        function openModal(title, formHTML, submitHandler, currentData = null) {
+            modalTitle.textContent = title;
+            genericForm.innerHTML = formHTML;
+            genericForm.onsubmit = async (e) => {
+                e.preventDefault();
+                formFeedback.textContent = '';
+                const formData = new FormData(genericForm);
+                const data = Object.fromEntries(formData.entries());
+                try {
+                    await submitHandler(data, currentData ? currentData.id : null);
+                    closeModal();
+                    showModalMessage("Sucesso", "Operação realizada com sucesso!");
+                } catch (error) {
+                    console.error("Form submission error:", error);
+                    formFeedback.textContent = `Erro: ${error.message}`;
+                    showModalMessage("Erro na Operação", `Ocorreu um erro: ${error.message}`);
+                }
+            };
+            modal.style.display = 'block';
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+            genericForm.reset();
+            formFeedback.textContent = '';
+        }
+
+        closeModalBtn.onclick = closeModal;
+        window.onclick = (event) => {
+            if (event.target == modal) closeModal();
+            if (event.target == confirmModal) closeConfirmModal();
+            if (event.target == messageModal) closeMessageModal();
+        };
+
+        function showConfirmModal(title, message, onConfirm) {
+            confirmModalTitle.textContent = title;
+            confirmModalMessage.textContent = message;
+            confirmCallback = onConfirm;
+            confirmModal.style.display = 'block';
+        }
+
+        function closeConfirmModal() {
+            confirmModal.style.display = 'none';
+            confirmCallback = null;
+        }
+
+        confirmModalCancelBtn.onclick = closeConfirmModal;
+        confirmModalConfirmBtn.onclick = () => {
+            if (confirmCallback) {
+                confirmCallback();
+            }
+            closeConfirmModal();
+        };
+
+        function showModalMessage(title, text) {
+            messageModalTitle.textContent = title;
+            messageModalText.textContent = text;
+            messageModal.style.display = 'block';
+        }
+
+        function closeMessageModal() {
+            messageModal.style.display = 'none';
+        }
+        messageModalCloseBtn.onclick = closeMessageModal;
+        messageModalOkBtn.onclick = closeMessageModal;
+
+
+        // --- Tab Navigation ---
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                if (!isAuthReady) {
+                    showModalMessage("Aguarde", "A autenticação ainda está em progresso.");
+                    return;
+                }
+                const tabName = button.dataset.tab;
+
+                tabButtons.forEach(btn => {
+                    btn.classList.remove('border-blue-600', 'text-blue-600');
+                    btn.classList.add('text-gray-600', 'hover:text-blue-700');
+                });
+                button.classList.add('border-blue-600', 'text-blue-600');
+                button.classList.remove('text-gray-600', 'hover:text-blue-700');
+
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(`${tabName}Content`).classList.add('active');
+                loadCurrentTabData(); // Load data for the newly active tab
+            });
+        });
+
+        function getActiveTab() {
+            const activeButton = document.querySelector('.tab-button.border-blue-600');
+            return activeButton ? activeButton.dataset.tab : 'dashboard';
+        }
+
+        function loadCurrentTabData() {
+            if (!isAuthReady || !db) {
+                console.log("Auth not ready or DB not initialized. Skipping data load for current tab.");
+                return;
+            }
+            const activeTab = getActiveTab();
+            console.log(`Loading data for active tab: ${activeTab}`);
+            switch (activeTab) {
+                case 'products':
+                    loadProducts();
+                    break;
+                case 'customers':
+                    loadCustomers();
+                    break;
+                case 'suppliers':
+                    loadSuppliers();
+                    break;
+                case 'mechanics':
+                    loadMechanics();
+                    break;
+                case 'warranties':
+                    loadWarranties();
+                    break;
+                case 'dashboard':
+                    loadDashboardData();
+                    break;
+            }
+        }
+
+        // --- CRUD Operations ---
+        // Generic function to add a document
+        async function addData(collectionName, data) {
+            if (!db) throw new Error("Banco de dados não inicializado.");
+            await addDoc(collection(db, getCollectionPath(collectionName)), data);
+        }
+
+        // Generic function to get all documents from a collection
+        async function getData(collectionName) {
+            if (!db) throw new Error("Banco de dados não inicializado.");
+            const querySnapshot = await getDocs(collection(db, getCollectionPath(collectionName)));
+            const dataList = [];
+            querySnapshot.forEach((doc) => {
+                dataList.push({ id: doc.id, ...doc.data() });
+            });
+            return dataList;
+        }
+        
+        // Generic function to update a document
+        async function updateData(collectionName, id, data) {
+            if (!db) throw new Error("Banco de dados não inicializado.");
+            const docRef = doc(db, getCollectionPath(collectionName), id);
+            await updateDoc(docRef, data);
+        }
+
+        // Generic function to delete a document
+        async function deleteData(collectionName, id) {
+            if (!db) throw new Error("Banco de dados não inicializado.");
+            await deleteDoc(doc(db, getCollectionPath(collectionName), id));
+        }
+
+        // --- Product Management ---
+        const productsTableBody = document.getElementById('productsTableBody');
+        const addProductBtn = document.getElementById('addProductBtn');
+
+        const productFormHTML = (product = {}) => `
+            <input type="hidden" name="id" value="${product.id || ''}">
+            <div>
+                <label for="productName" class="form-label">Nome do Produto:</label>
+                <input type="text" id="productName" name="name" class="input-field" value="${product.name || ''}" required>
+            </div>
+            <div class="mt-4">
+                <label for="productPartNumber" class="form-label">Código da Peça:</label>
+                <input type="text" id="productPartNumber" name="partNumber" class="input-field" value="${product.partNumber || ''}">
+            </div>
+            <div class="mt-4">
+                <label for="productSupplierId" class="form-label">Fornecedor:</label>
+                <select id="productSupplierId" name="supplierId" class="input-field">
+                    </select>
+            </div>
+            <div class="mt-4 grid grid-cols-2 gap-4">
+                <div>
+                    <label for="productCostPrice" class="form-label">Preço de Custo (R$):</label>
+                    <input type="number" step="0.01" id="productCostPrice" name="costPrice" class="input-field" value="${product.costPrice || ''}">
+                </div>
+                <div>
+                    <label for="productSellingPrice" class="form-label">Preço de Venda (R$):</label>
+                    <input type="number" step="0.01" id="productSellingPrice" name="sellingPrice" class="input-field" value="${product.sellingPrice || ''}" required>
+                </div>
+            </div>
+            <div class="mt-4">
+                <label for="productWarrantyPeriod" class="form-label">Período de Garantia (ex: 3 meses, 1 ano):</label>
+                <input type="text" id="productWarrantyPeriod" name="warrantyPeriod" class="input-field" value="${product.warrantyPeriod || ''}">
+            </div>
+            <button type="submit" class="btn btn-primary mt-6 w-full">${product.id ? 'Atualizar' : 'Salvar'} Produto</button>
+        `;
+
+        async function populateSupplierDropdown(selectElementId, selectedSupplierId = null) {
+            const selectElement = document.getElementById(selectElementId);
+            if (!selectElement) return;
+            selectElement.innerHTML = '<option value="">Carregando fornecedores...</option>';
+            try {
+                const suppliers = await getData(COLLECTIONS.SUPPLIERS);
+                if (suppliers.length === 0) {
+                    selectElement.innerHTML = '<option value="">Nenhum fornecedor cadastrado</option>';
+                    return;
+                }
+                selectElement.innerHTML = '<option value="">Selecione um Fornecedor</option>';
+                suppliers.forEach(supplier => {
+                    const option = document.createElement('option');
+                    option.value = supplier.id;
+                    option.textContent = supplier.name;
+                    if (supplier.id === selectedSupplierId) {
+                        option.selected = true;
+                    }
+                    selectElement.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Error populating suppliers:", error);
+                selectElement.innerHTML = '<option value="">Erro ao carregar</option>';
+            }
+        }
+
+
+        addProductBtn.onclick = () => {
+            openModal('Adicionar Novo Produto', productFormHTML(), async (data) => {
+                await addData(COLLECTIONS.PRODUCTS, data);
+                loadProducts();
+            });
+            populateSupplierDropdown('productSupplierId');
+        };
+
+        async function editProduct(product) {
+            openModal('Editar Produto', productFormHTML(product), async (data) => {
+                await updateData(COLLECTIONS.PRODUCTS, product.id, data);
+                loadProducts();
+            }, product);
+            populateSupplierDropdown('productSupplierId', product.supplierId);
+        }
+
+        async function deleteProduct(productId, productName) {
+            showConfirmModal('Confirmar Exclusão', `Tem certeza que deseja excluir o produto "${productName}"? Esta ação não pode ser desfeita.`, async () => {
+                try {
+                    // Check if product is used in any warranty
+                    const warrantiesCollectionPath = getCollectionPath(COLLECTIONS.WARRANTIES);
+                    const q = query(collection(db, warrantiesCollectionPath), where("productId", "==", productId));
+                    const warrantySnapshot = await getDocs(q);
+
+                    if (!warrantySnapshot.empty) {
+                        showModalMessage("Erro ao Excluir", `Não é possível excluir o produto "${productName}" pois ele está associado a ${warrantySnapshot.size} garantia(s). Remova as garantias associadas primeiro.`);
+                        return;
+                    }
+
+                    await deleteData(COLLECTIONS.PRODUCTS, productId);
+                    showModalMessage("Sucesso", `Produto "${productName}" excluído com sucesso.`);
+                    loadProducts();
+                } catch (error) {
+                    console.error("Error deleting product:", error);
+                    showModalMessage("Erro ao Excluir", `Não foi possível excluir o produto: ${error.message}`);
+                }
+            });
+        }
+
+
+        async function loadProducts() {
+            if (!isAuthReady || !db) return;
+            productsTableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="loading-spinner"></div></td></tr>';
+            try {
+                const products = await getData(COLLECTIONS.PRODUCTS);
+                const suppliers = await getData(COLLECTIONS.SUPPLIERS); // Fetch suppliers for name mapping
+                const supplierMap = suppliers.reduce((map, supplier) => {
+                    map[supplier.id] = supplier.name;
+                    return map;
+                }, {});
+
+                if (products.length === 0) {
+                    productsTableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">Nenhum produto cadastrado.</td></tr>';
+                    return;
+                }
+                productsTableBody.innerHTML = '';
+                products.forEach(product => {
+                    const row = productsTableBody.insertRow();
+                    row.innerHTML = `
+                        <td class="py-3 px-4">${product.name || 'N/A'}</td>
+                        <td class="py-3 px-4">${product.partNumber || 'N/A'}</td>
+                        <td class="py-3 px-4">${supplierMap[product.supplierId] || product.supplierId || 'N/A'}</td>
+                        <td class="py-3 px-4">R$ ${parseFloat(product.sellingPrice || 0).toFixed(2)}</td>
+                        <td class="py-3 px-4">${product.warrantyPeriod || 'N/A'}</td>
+                        <td class="py-3 px-4 whitespace-nowrap">
+                            <button class="text-blue-600 hover:text-blue-800 mr-2" title="Editar"><i class="fas fa-edit"></i></button>
+                            <button class="text-red-600 hover:text-red-800" title="Excluir"><i class="fas fa-trash"></i></button>
+                        </td>
+                    `;
+                    row.querySelector('.fa-edit').parentElement.onclick = () => editProduct(product);
+                    row.querySelector('.fa-trash').parentElement.onclick = () => deleteProduct(product.id, product.name);
+                });
+            } catch (error) {
+                console.error("Error loading products:", error);
+                productsTableBody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-red-500">Erro ao carregar produtos: ${error.message}</td></tr>`;
+            }
+        }
+
+        // --- Customer Management ---
+        const customersTableBody = document.getElementById('customersTableBody');
+        const addCustomerBtn = document.getElementById('addCustomerBtn');
+
+        const customerFormHTML = (customer = {}) => `
+            <input type="hidden" name="id" value="${customer.id || ''}">
+            <div>
+                <label for="customerName" class="form-label">Nome Completo:</label>
+                <input type="text" id="customerName" name="name" class="input-field" value="${customer.name || ''}" required>
+            </div>
+            <div class="mt-4">
+                <label for="customerCpf" class="form-label">CPF:</label>
+                <input type="text" id="customerCpf" name="cpf" class="input-field" value="${customer.cpf || ''}">
+            </div>
+            <div class="mt-4">
+                <label for="customerPhone" class="form-label">Telefone:</label>
+                <input type="tel" id="customerPhone" name="phone" class="input-field" value="${customer.phone || ''}">
+            </div>
+            <div class="mt-4">
+                <label for="customerEmail" class="form-label">Email:</label>
+                <input type="email" id="customerEmail" name="email" class="input-field" value="${customer.email || ''}">
+            </div>
+            <div class="mt-4">
+                <label for="customerAddress" class="form-label">Endereço:</label>
+                <input type="text" id="customerAddress" name="address" class="input-field" value="${customer.address || ''}">
+            </div>
+            <button type="submit" class="btn btn-primary mt-6 w-full">${customer.id ? 'Atualizar' : 'Salvar'} Cliente</button>
+        `;
+
+        addCustomerBtn.onclick = () => {
+            openModal('Adicionar Novo Cliente', customerFormHTML(), async (data) => {
+                await addData(COLLECTIONS.CUSTOMERS, data);
+                loadCustomers();
+            });
+        };
+
+        async function editCustomer(customer) {
+            openModal('Editar Cliente', customerFormHTML(customer), async (data) => {
+                await updateData(COLLECTIONS.CUSTOMERS, customer.id, data);
+                loadCustomers();
+            }, customer);
+        }
+
+        async function deleteCustomer(customerId, customerName) {
+             showConfirmModal('Confirmar Exclusão', `Tem certeza que deseja excluir o cliente "${customerName}"? Esta ação não pode ser desfeita.`, async () => {
+                try {
+                    // Check if customer is used in any warranty
+                    const warrantiesCollectionPath = getCollectionPath(COLLECTIONS.WARRANTIES);
+                    const q = query(collection(db, warrantiesCollectionPath), where("customerId", "==", customerId));
+                    const warrantySnapshot = await getDocs(q);
+
+                    if (!warrantySnapshot.empty) {
+                        showModalMessage("Erro ao Excluir", `Não é possível excluir o cliente "${customerName}" pois ele está associado a ${warrantySnapshot.size} garantia(s). Remova as garantias associadas primeiro.`);
+                        return;
+                    }
+
+                    await deleteData(COLLECTIONS.CUSTOMERS, customerId);
+                    showModalMessage("Sucesso", `Cliente "${customerName}" excluído com sucesso.`);
+                    loadCustomers();
+                } catch (error) {
+                    console.error("Error deleting customer:", error);
+                    showModalMessage("Erro ao Excluir", `Não foi possível excluir o cliente: ${error.message}`);
+                }
+            });
+        }
+
+        async function loadCustomers() {
+            if (!isAuthReady || !db) return;
+            customersTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="loading-spinner"></div></td></tr>';
+            try {
+                const customers = await getData(COLLECTIONS.CUSTOMERS);
+                if (customers.length === 0) {
+                    customersTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">Nenhum cliente cadastrado.</td></tr>';
+                    return;
+                }
+                customersTableBody.innerHTML = '';
+                customers.forEach(customer => {
+                    const row = customersTableBody.insertRow();
+                    row.innerHTML = `
+                        <td class="py-3 px-4">${customer.name || 'N/A'}</td>
+                        <td class="py-3 px-4">${customer.cpf || 'N/A'}</td>
+                        <td class="py-3 px-4">${customer.phone || 'N/A'}</td>
+                        <td class="py-3 px-4">${customer.email || 'N/A'}</td>
+                        <td class="py-3 px-4 whitespace-nowrap">
+                            <button class="text-blue-600 hover:text-blue-800 mr-2" title="Editar"><i class="fas fa-edit"></i></button>
+                            <button class="text-red-600 hover:text-red-800" title="Excluir"><i class="fas fa-trash"></i></button>
+                        </td>
+                    `;
+                    row.querySelector('.fa-edit').parentElement.onclick = () => editCustomer(customer);
+                    row.querySelector('.fa-trash').parentElement.onclick = () => deleteCustomer(customer.id, customer.name);
+                });
+            } catch (error) {
+                console.error("Error loading customers:", error);
+                customersTableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-500">Erro ao carregar clientes: ${error.message}</td></tr>`;
+            }
+        }
+
+        // --- Supplier Management ---
+        const suppliersTableBody = document.getElementById('suppliersTableBody');
+        const addSupplierBtn = document.getElementById('addSupplierBtn');
+
+        const supplierFormHTML = (supplier = {}) => `
+            <input type="hidden" name="id" value="${supplier.id || ''}">
+            <div>
+                <label for="supplierName" class="form-label">Nome do Fornecedor:</label>
+                <input type="text" id="supplierName" name="name" class="input-field" value="${supplier.name || ''}" required>
+            </div>
+            <div class="mt-4">
+                <label for="supplierCnpj" class="form-label">CNPJ:</label>
+                <input type="text" id="supplierCnpj" name="cnpj" class="input-field" value="${supplier.cnpj || ''}">
+            </div>
+            <div class="mt-4">
+                <label for="supplierPhone" class="form-label">Telefone:</label>
+                <input type="tel" id="supplierPhone" name="phone" class="input-field" value="${supplier.phone || ''}">
+            </div>
+            <div class="mt-4">
+                <label for="supplierEmail" class="form-label">Email:</label>
+                <input type="email" id="supplierEmail" name="email" class="input-field" value="${supplier.email || ''}">
+            </div>
+            <div class="mt-4">
+                <label for="supplierAddress" class="form-label">Endereço:</label>
+                <input type="text" id="supplierAddress" name="address" class="input-field" value="${supplier.address || ''}">
+            </div>
+            <button type="submit" class="btn btn-primary mt-6 w-full">${supplier.id ? 'Atualizar' : 'Salvar'} Fornecedor</button>
+        `;
+
+        addSupplierBtn.onclick = () => {
+            openModal('Adicionar Novo Fornecedor', supplierFormHTML(), async (data) => {
+                await addData(COLLECTIONS.SUPPLIERS, data);
+                loadSuppliers();
+            });
+        };
+
+        async function editSupplier(supplier) {
+            openModal('Editar Fornecedor', supplierFormHTML(supplier), async (data) => {
+                await updateData(COLLECTIONS.SUPPLIERS, supplier.id, data);
+                loadSuppliers();
+            }, supplier);
+        }
+
+        async function deleteSupplier(supplierId, supplierName) {
+            showConfirmModal('Confirmar Exclusão', `Tem certeza que deseja excluir o fornecedor "${supplierName}"? Esta ação não pode ser desfeita.`, async () => {
+                try {
+                    // Check if supplier is used in any product
+                    const productsCollectionPath = getCollectionPath(COLLECTIONS.PRODUCTS);
+                    const q = query(collection(db, productsCollectionPath), where("supplierId", "==", supplierId));
+                    const productSnapshot = await getDocs(q);
+
+                    if (!productSnapshot.empty) {
+                        showModalMessage("Erro ao Excluir", `Não é possível excluir o fornecedor "${supplierName}" pois ele está associado a ${productSnapshot.size} produto(s). Atualize os produtos associados primeiro.`);
+                        return;
+                    }
+                    await deleteData(COLLECTIONS.SUPPLIERS, supplierId);
+                    showModalMessage("Sucesso", `Fornecedor "${supplierName}" excluído com sucesso.`);
+                    loadSuppliers();
+                } catch (error) {
+                    console.error("Error deleting supplier:", error);
+                    showModalMessage("Erro ao Excluir", `Não foi possível excluir o fornecedor: ${error.message}`);
+                }
+            });
+        }
+
+        async function loadSuppliers() {
+            if (!isAuthReady || !db) return;
+            suppliersTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="loading-spinner"></div></td></tr>';
+            try {
+                const suppliers = await getData(COLLECTIONS.SUPPLIERS);
+                if (suppliers.length === 0) {
+                    suppliersTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">Nenhum fornecedor cadastrado.</td></tr>';
+                    return;
+                }
+                suppliersTableBody.innerHTML = '';
+                suppliers.forEach(supplier => {
+                    const row = suppliersTableBody.insertRow();
+                    row.innerHTML = `
+                        <td class="py-3 px-4">${supplier.name || 'N/A'}</td>
+                        <td class="py-3 px-4">${supplier.cnpj || 'N/A'}</td>
+                        <td class="py-3 px-4">${supplier.phone || 'N/A'}</td>
+                        <td class="py-3 px-4">${supplier.email || 'N/A'}</td>
+                        <td class="py-3 px-4 whitespace-nowrap">
+                            <button class="text-blue-600 hover:text-blue-800 mr-2" title="Editar"><i class="fas fa-edit"></i></button>
+                            <button class="text-red-600 hover:text-red-800" title="Excluir"><i class="fas fa-trash"></i></button>
+                        </td>
+                    `;
+                    row.querySelector('.fa-edit').parentElement.onclick = () => editSupplier(supplier);
+                    row.querySelector('.fa-trash').parentElement.onclick = () => deleteSupplier(supplier.id, supplier.name);
+                });
+            } catch (error) {
+                console.error("Error loading suppliers:", error);
+                suppliersTableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-500">Erro ao carregar fornecedores: ${error.message}</td></tr>`;
+            }
+        }
+
+        // --- Mechanic Management ---
+        const mechanicsTableBody = document.getElementById('mechanicsTableBody');
+        const addMechanicBtn = document.getElementById('addMechanicBtn');
+
+        const mechanicFormHTML = (mechanic = {}) => `
+            <input type="hidden" name="id" value="${mechanic.id || ''}">
+            <div>
+                <label for="mechanicName" class="form-label">Nome do Mecânico:</label>
+                <input type="text" id="mechanicName" name="name" class="input-field" value="${mechanic.name || ''}" required>
+            </div>
+            <div class="mt-4">
+                <label for="mechanicCpfCnpj" class="form-label">CPF/CNPJ:</label>
+                <input type="text" id="mechanicCpfCnpj" name="cpf_cnpj" class="input-field" value="${mechanic.cpf_cnpj || ''}">
+            </div>
+            <div class="mt-4">
+                <label for="mechanicPhone" class="form-label">Telefone:</label>
+                <input type="tel" id="mechanicPhone" name="phone" class="input-field" value="${mechanic.phone || ''}">
+            </div>
+            <div class="mt-4">
+                <label for="mechanicWorkshopName" class="form-label">Nome da Oficina (opcional):</label>
+                <input type="text" id="mechanicWorkshopName" name="workshopName" class="input-field" value="${mechanic.workshopName || ''}">
+            </div>
+            <button type="submit" class="btn btn-primary mt-6 w-full">${mechanic.id ? 'Atualizar' : 'Salvar'} Mecânico</button>
+        `;
+
+        addMechanicBtn.onclick = () => {
+            openModal('Adicionar Novo Mecânico', mechanicFormHTML(), async (data) => {
+                await addData(COLLECTIONS.MECHANICS, data);
+                loadMechanics();
+            });
+        };
+
+        async function editMechanic(mechanic) {
+            openModal('Editar Mecânico', mechanicFormHTML(mechanic), async (data) => {
+                await updateData(COLLECTIONS.MECHANICS, mechanic.id, data);
+                loadMechanics();
+            }, mechanic);
+        }
+
+        async function deleteMechanic(mechanicId, mechanicName) {
+            showConfirmModal('Confirmar Exclusão', `Tem certeza que deseja excluir o mecânico "${mechanicName}"? Esta ação não pode ser desfeita.`, async () => {
+                 try {
+                    // Check if mechanic is used in any warranty
+                    const warrantiesCollectionPath = getCollectionPath(COLLECTIONS.WARRANTIES);
+                    const q = query(collection(db, warrantiesCollectionPath), where("mechanicId", "==", mechanicId));
+                    const warrantySnapshot = await getDocs(q);
+
+                    if (!warrantySnapshot.empty) {
+                        showModalMessage("Erro ao Excluir", `Não é possível excluir o mecânico "${mechanicName}" pois ele está associado a ${warrantySnapshot.size} garantia(s). Remova as garantias associadas primeiro.`);
+                        return;
+                    }
+
+                    await deleteData(COLLECTIONS.MECHANICS, mechanicId);
+                    showModalMessage("Sucesso", `Mecânico "${mechanicName}" excluído com sucesso.`);
+                    loadMechanics();
+                } catch (error) {
+                    console.error("Error deleting mechanic:", error);
+                    showModalMessage("Erro ao Excluir", `Não foi possível excluir o mecânico: ${error.message}`);
+                }
+            });
+        }
+
+        async function loadMechanics() {
+            if (!isAuthReady || !db) return;
+            mechanicsTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="loading-spinner"></div></td></tr>';
+            try {
+                const mechanics = await getData(COLLECTIONS.MECHANICS);
+                if (mechanics.length === 0) {
+                    mechanicsTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">Nenhum mecânico cadastrado.</td></tr>';
+                    return;
+                }
+                mechanicsTableBody.innerHTML = '';
+                mechanics.forEach(mechanic => {
+                    const row = mechanicsTableBody.insertRow();
+                    row.innerHTML = `
+                        <td class="py-3 px-4">${mechanic.name || 'N/A'}</td>
+                        <td class="py-3 px-4">${mechanic.cpf_cnpj || 'N/A'}</td>
+                        <td class="py-3 px-4">${mechanic.phone || 'N/A'}</td>
+                        <td class="py-3 px-4">${mechanic.workshopName || 'N/A'}</td>
+                        <td class="py-3 px-4 whitespace-nowrap">
+                            <button class="text-blue-600 hover:text-blue-800 mr-2" title="Editar"><i class="fas fa-edit"></i></button>
+                            <button class="text-red-600 hover:text-red-800" title="Excluir"><i class="fas fa-trash"></i></button>
+                        </td>
+                    `;
+                    row.querySelector('.fa-edit').parentElement.onclick = () => editMechanic(mechanic);
+                    row.querySelector('.fa-trash').parentElement.onclick = () => deleteMechanic(mechanic.id, mechanic.name);
+                });
+            } catch (error) {
+                console.error("Error loading mechanics:", error);
+                mechanicsTableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-500">Erro ao carregar mecânicos: ${error.message}</td></tr>`;
+            }
+        }
+
+        // --- Warranty Management ---
+        const warrantiesTableBody = document.getElementById('warrantiesTableBody');
+        const addWarrantyBtn = document.getElementById('addWarrantyBtn');
+        const warrantyStatusOptions = ["Em análise", "Aprovada", "Recusada", "Produto trocado", "Reparado", "Aguardando peça", "Finalizada"];
+
+        const warrantyFormHTML = (warranty = {}) => `
+            <input type="hidden" name="id" value="${warranty.id || ''}">
+            <div>
+                <label for="warrantyProductId" class="form-label">Produto:</label>
+                <select id="warrantyProductId" name="productId" class="input-field" required>
+                    </select>
+            </div>
+            <div class="mt-4">
+                <label for="warrantyCustomerId" class="form-label">Cliente:</label>
+                <select id="warrantyCustomerId" name="customerId" class="input-field" required>
+                    </select>
+            </div>
+            <div class="mt-4">
+                <label for="warrantyMechanicId" class="form-label">Mecânico (opcional):</label>
+                <select id="warrantyMechanicId" name="mechanicId" class="input-field">
+                    </select>
+            </div>
+            <div class="mt-4">
+                <label for="warrantySaleDate" class="form-label">Data da Venda:</label>
+                <input type="date" id="warrantySaleDate" name="saleDate" class="input-field" value="${warranty.saleDate || ''}" required>
+            </div>
+            <div class="mt-4">
+                <label for="warrantyInvoiceNumber" class="form-label">Número da Nota Fiscal:</label>
+                <input type="text" id="warrantyInvoiceNumber" name="invoiceNumber" class="input-field" value="${warranty.invoiceNumber || ''}">
+            </div>
+            <div class="mt-4">
+                <label for="warrantyProblemDescription" class="form-label">Descrição do Problema:</label>
+                <textarea id="warrantyProblemDescription" name="problemDescription" class="input-field" rows="3" required>${warranty.problemDescription || ''}</textarea>
+            </div>
+            <div class="mt-4">
+                <label for="warrantyStatus" class="form-label">Status:</label>
+                <select id="warrantyStatus" name="status" class="input-field" required>
+                    ${warrantyStatusOptions.map(status => `<option value="${status}" ${warranty.status === status ? 'selected' : ''}>${status}</option>`).join('')}
+                </select>
+            </div>
+            <div class="mt-4">
+                <label for="warrantyResolutionDate" class="form-label">Data da Resolução (opcional):</label>
+                <input type="date" id="warrantyResolutionDate" name="resolutionDate" class="input-field" value="${warranty.resolutionDate || ''}">
+            </div>
+            <div class="mt-4">
+                <label for="warrantyNotes" class="form-label">Observações (opcional):</label>
+                <textarea id="warrantyNotes" name="notes" class="input-field" rows="2">${warranty.notes || ''}</textarea>
+            </div>
+            <button type="submit" class="btn btn-primary mt-6 w-full">${warranty.id ? 'Atualizar' : 'Salvar'} Garantia</button>
+        `;
+
+        async function populateSelectWithOptions(selectElementId, collectionName, nameField, selectedId = null, placeholder = "Selecione") {
+            const selectElement = document.getElementById(selectElementId);
+            if (!selectElement) {
+                console.error(`Select element ${selectElementId} not found.`);
+                return;
+            }
+            selectElement.innerHTML = `<option value="">Carregando ${placeholder.toLowerCase()}...</option>`;
+            try {
+                const items = await getData(collectionName);
+                if (items.length === 0) {
+                    selectElement.innerHTML = `<option value="">Nenhum ${placeholder.toLowerCase()} cadastrado</option>`;
+                    return;
+                }
+                selectElement.innerHTML = `<option value="">${placeholder}</option>`;
+                items.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    option.textContent = item[nameField] || item.name || 'Nome Indisponível'; // Fallback for different name fields
+                    if (item.id === selectedId) {
+                        option.selected = true;
+                    }
+                    selectElement.appendChild(option);
+                });
+            } catch (error) {
+                console.error(`Error populating ${selectElementId}:`, error);
+                selectElement.innerHTML = `<option value="">Erro ao carregar</option>`;
+            }
+        }
+
+
+        addWarrantyBtn.onclick = () => {
+            openModal('Registrar Nova Garantia', warrantyFormHTML(), async (data) => {
+                await addData(COLLECTIONS.WARRANTIES, data);
+                loadWarranties();
+                loadDashboardData(); // Update dashboard counts
+            });
+            populateSelectWithOptions('warrantyProductId', COLLECTIONS.PRODUCTS, 'name', null, 'Selecione o Produto');
+            populateSelectWithOptions('warrantyCustomerId', COLLECTIONS.CUSTOMERS, 'name', null, 'Selecione o Cliente');
+            populateSelectWithOptions('warrantyMechanicId', COLLECTIONS.MECHANICS, 'name', null, 'Selecione o Mecânico (Opcional)');
+        };
+
+        async function editWarranty(warranty) {
+            openModal('Editar Garantia', warrantyFormHTML(warranty), async (data) => {
+                await updateData(COLLECTIONS.WARRANTIES, warranty.id, data);
+                loadWarranties();
+                loadDashboardData(); // Update dashboard counts
+            }, warranty);
+            populateSelectWithOptions('warrantyProductId', COLLECTIONS.PRODUCTS, 'name', warranty.productId, 'Selecione o Produto');
+            populateSelectWithOptions('warrantyCustomerId', COLLECTIONS.CUSTOMERS, 'name', warranty.customerId, 'Selecione o Cliente');
+            populateSelectWithOptions('warrantyMechanicId', COLLECTIONS.MECHANICS, 'name', warranty.mechanicId, 'Selecione o Mecânico (Opcional)');
+        }
+
+        async function deleteWarranty(warrantyId) {
+             showConfirmModal('Confirmar Exclusão', `Tem certeza que deseja excluir esta garantia? Esta ação não pode ser desfeita.`, async () => {
+                try {
+                    await deleteData(COLLECTIONS.WARRANTIES, warrantyId);
+                    showModalMessage("Sucesso", `Garantia excluída com sucesso.`);
+                    loadWarranties();
+                    loadDashboardData(); // Update dashboard counts
+                } catch (error) {
+                    console.error("Error deleting warranty:", error);
+                    showModalMessage("Erro ao Excluir", `Não foi possível excluir a garantia: ${error.message}`);
+                }
+            });
+        }
+
+        async function loadWarranties() {
+            if (!isAuthReady || !db) return;
+            warrantiesTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="loading-spinner"></div></td></tr>';
+            try {
+                const warranties = await getData(COLLECTIONS.WARRANTIES);
+                const products = await getData(COLLECTIONS.PRODUCTS);
+                const customers = await getData(COLLECTIONS.CUSTOMERS);
+
+                const productMap = products.reduce((map, item) => { map[item.id] = item.name; return map; }, {});
+                const customerMap = customers.reduce((map, item) => { map[item.id] = item.name; return map; }, {});
+
+                if (warranties.length === 0) {
+                    warrantiesTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">Nenhuma garantia registrada.</td></tr>';
+                    return;
+                }
+                warrantiesTableBody.innerHTML = '';
+                warranties.forEach(warranty => {
+                    const row = warrantiesTableBody.insertRow();
+                    const statusColor = warranty.status === 'Aprovada' || warranty.status === 'Produto trocado' || warranty.status === 'Reparado' ? 'text-green-600' :
+                                      warranty.status === 'Recusada' ? 'text-red-600' :
+                                      warranty.status === 'Em análise' || warranty.status === 'Aguardando peça' ? 'text-yellow-600' : 'text-gray-600';
+                    row.innerHTML = `
+                        <td class="py-3 px-4">${productMap[warranty.productId] || warranty.productId || 'N/A'}</td>
+                        <td class="py-3 px-4">${customerMap[warranty.customerId] || warranty.customerId || 'N/A'}</td>
+                        <td class="py-3 px-4">${warranty.saleDate ? new Date(warranty.saleDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'N/A'}</td>
+                        <td class="py-3 px-4 font-semibold ${statusColor}">${warranty.status || 'N/A'}</td>
+                        <td class="py-3 px-4 whitespace-nowrap">
+                            <button class="text-blue-600 hover:text-blue-800 mr-2" title="Editar"><i class="fas fa-edit"></i></button>
+                            <button class="text-red-600 hover:text-red-800" title="Excluir"><i class="fas fa-trash"></i></button>
+                        </td>
+                    `;
+                    row.querySelector('.fa-edit').parentElement.onclick = () => editWarranty(warranty);
+                    row.querySelector('.fa-trash').parentElement.onclick = () => deleteWarranty(warranty.id);
+                });
+            } catch (error) {
+                console.error("Error loading warranties:", error);
+                warrantiesTableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-500">Erro ao carregar garantias: ${error.message}</td></tr>`;
+            }
+        }
+
+        // --- Dashboard Data ---
+        async function loadDashboardData() {
+            if (!isAuthReady || !db) return;
+            try {
+                const products = await getData(COLLECTIONS.PRODUCTS);
+                const customers = await getData(COLLECTIONS.CUSTOMERS);
+                const warranties = await getData(COLLECTIONS.WARRANTIES);
+
+                document.getElementById('totalProducts').textContent = products.length;
+                document.getElementById('totalCustomers').textContent = customers.length;
+
+                const activeWarranties = warranties.filter(w =>
+                    w.status === "Em análise" || w.status === "Aguardando peça" || w.status === "Aprovada" // Consider these as "active"
+                ).length;
+                document.getElementById('activeWarranties').textContent = activeWarranties;
+
+            } catch (error) {
+                console.error("Error loading dashboard data:", error);
+                showModalMessage("Erro no Dashboard", "Não foi possível carregar os dados do dashboard.");
+            }
+        }
+
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeFirebase();
+            // Initial tab is dashboard, so its data will be loaded by onAuthStateChanged
+        });
+
+    </script>
+</body>
+</html>

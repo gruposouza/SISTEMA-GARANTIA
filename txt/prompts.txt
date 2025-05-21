@@ -1,0 +1,37 @@
+******************** PROMPTS UTILIZADOS PARA FAZER O SISTEMA WEB ********************
+- crie um sistema para controle de garantias para uma auto peças de veículos leves usando html, css, javascript e 
+o banco de dados para salvar as informações, como fornecedores, clientes, mecânicos e produtos
+
+
+
+******************** A FAZER ********************
+
+-Este sistema é um ponto de partida robusto. Podemos adicionar mais funcionalidades ou refinar as existentes 
+conforme sua necessidade. Por exemplo, poderíamos adicionar filtros, busca, paginação para tabelas com muitos dados,
+ ou relatórios mais detalhados. (sugestão do gemini)
+
+- adicione o campo para ate 48 parcelas, e crie o banco de dados para salvar as informaçoes
+- alem dos botoes marcar como pago e excluir pagamento, adicione botão alterar pagamento para que possa mudar a 
+data do pagamento e valor da parcela
+- crie uma nova tela para o cadastro dos fornecedores e salve em uma nova tabela no banco de dados
+- preciso que o cadastro fornecedor seja editavel e adicione os campos data de cadastro, nome fantasia, razao social,
+cnpj, inscrição estadual, email, telefone, celular, endereço, complemento, cep, bairro, cidade e estado separadamente
+- GERAR ID UNICO PARA PAGAMENTO E FORNECEDORES, DEPOIS ADICIONE FILTRO PARA FORNECEDORES NA PARTE DE PAGAMENTO, 
+DENTRO DE FORNECEDORES GERAR FILTRO PARA VER O QUE ESTA EM ABERTO E O QUE JA FOI PAGO
+- CRIE UM RELATORIO ONDE POSSA SER POSSIVEL A PESQUISA POR PERIODO
+- MOSTRAR ID FONECEDOR E PAGAMENTO MAIS SEM SER EDITAVEL
+- deixar Pagamentos, fornecedores e relatórios ordenáveis
+- QUANDO A CONTA FOR PAGA ADICIONAR A COLUNA MOSTRANDO A DATA DO PAGAMENTO
+- ADICIONAR CAMPO NOTA FISCAL NA HORA DE CADASTRAR PAGAMENTO
+- PEQUISAR PAGAMENTOS POR NOTA FISCAL, FORNECEDOR
+- GERAR TESTE COM 5 FORNECEDORES E Pagamentos PARA OS MESMO NO MAXIMO DE 10 PARCELAS
+- FAZER BACK-UP ONDE POSSA RECUPERAR OS DADOS
+- COLOCAR MASCARA NOS CAMPOS CNPJ, I.E, TELEFONE, EMAIL, CELULAR, CEP, VALOR PAGEMENTO E PARCELAS
+- VALIDAR MASCARA CNPJ E EMAIL PARA VER SE E VALIDO
+- COLOCAR OPÇÃO DE INATIVO OU ATIVAO PARA FORNECEDORES
+- USAR API PARA POP UP
+- MOSTRAR A SOMA DO QUE JA FOI PAGO TAMBEM
+- ADD GERADOR DE PDF PARA IMPRESSAO
+
+******** POR ULTIMO ********
+ESCONDER FORNECEDORES E PAGAMENTO, MOSTRANDO SO QUANDO FOREM PESQUISADOS
