@@ -1,0 +1,14 @@
+   apiKey: "AIzaSyA2LYkRo6jxV7Za7DFW1Mmy_IFavSecInA",
+   apiKey: "AIzaSyA2LYkRo6jxV7Za7DFW1Mmy_IFavSecInA", // CONFIRA ESTE VALOR
+    authDomain: "controle-garantia.firebaseapp.com",
+    authDomain: "controle-garantia.firebaseapp.com",   // CONFIRA ESTE VALOR
+    projectId: "controle-garantia",
+    projectId: "controle-garantia",                   // CONFIRA ESTE VALOR
+    storageBucket: "controle-garantia.firebasestorage.app", // ATUALIZADO CONFORME SOLICITADO
+    storageBucket: "controle-garantia.firebasestorage.app",
+    messagingSenderId: "753625861980",
+    messagingSenderId: "753625861980",              // CONFIRA ESTE VALOR
+    appId: "1:753625861980:web:d5c2423575d1d9c077fb99",
+    appId: "1:753625861980:web:d5c2423575d1d9c077fb99", // CONFIRA ESTE VALOR
+    measurementId: "G-EM566F23CN"
+    measurementId: "G-EM566F23CN"                     // CONFIRA ESTE VALOR

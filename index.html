@@ -319,29 +319,30 @@
 
 
     <script type="module">
-        // Firebase SDKs - Updated to version 11.8.0 as per user's snippet
+        // Firebase SDKs
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-app.js";
-        // Analytics import is present in user's snippet but not used in this app.
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-analytics.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, where, writeBatch, setLogLevel } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-firestore.js";
 
         // --- Firebase Configuration (Directly from user) ---
+        // !! IMPORTANTE !! Verifique CUIDADOSAMENTE se esta configuração é IDÊNTICA
+        // à configuração do seu app web no Firebase Console (Configurações do Projeto > Seus apps > Snippet do SDK > Config).
+        // Verifique também as RESTRIÇÕES DA SUA API KEY no Google Cloud Console:
+        // 1. Vá para https://console.cloud.google.com/ -> APIs e Serviços > Credenciais
+        // 2. Encontre a API Key usada abaixo.
+        // 3. Restrições de aplicativo: Para teste, defina como "Nenhuma" ou adicione seu domínio de teste (ex: http://localhost:PORTA).
+        // 4. Restrições de API: Para teste, defina como "Não restringir chave" ou permita "Identity Toolkit API" e "Cloud Firestore API".
         const firebaseConfig = {
-            apiKey: "AIzaSyA2LYkRo6jxV7Za7DFW1Mmy_IFavSecInA", // User-provided API Key
+            apiKey: "AIzaSyA2LYkRo6jxV7Za7DFW1Mmy_IFavSecInA",
             authDomain: "controle-garantia.firebaseapp.com",
             projectId: "controle-garantia",
-            storageBucket: "controle-garantia.appspot.com", // Standard format: PROJECT_ID.appspot.com
-            //storageBucket: "controle-garantia.firebasestorage.app", // Standard format: PROJECT_ID.appspot.com
+            storageBucket: "controle-garantia.firebasestorage.app",
             messagingSenderId: "753625861980",
             appId: "1:753625861980:web:d5c2423575d1d9c077fb99",
             measurementId: "G-EM566F23CN"
         };
-        // Log the firebaseConfig to the console to help user verify it's loaded correctly.
-        console.log("Firebase Config being used:", JSON.parse(JSON.stringify(firebaseConfig)));
+        console.log("Firebase Config sendo usada:", JSON.parse(JSON.stringify(firebaseConfig)));
 
-
-        // Use projectId for Firestore path, similar to how __app_id was used
         const firestoreAppId = firebaseConfig.projectId;
 
         let app;
@@ -350,53 +351,59 @@
         let userId = null;
         let isAuthReady = false;
 
-        // --- Initialize Firebase and Auth ---
         async function initializeFirebase() {
             try {
+                console.log("Tentando inicializar Firebase...");
                 app = initializeApp(firebaseConfig);
+                console.log("Firebase App inicializado:", app.name);
                 db = getFirestore(app);
+                console.log("Firestore DB inicializado.");
                 auth = getAuth(app);
-                setLogLevel('debug'); // Firestore logging
-                // const analytics = getAnalytics(app); // Analytics initialized but not used in this app's logic
+                console.log("Firebase Auth inicializado.");
+                setLogLevel('debug');
 
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
-                        console.log("User is signed in:", user.uid);
+                        console.log("onAuthStateChanged: User is signed in:", user.uid, user);
                         userId = user.uid;
                         document.getElementById('userIdDisplay').textContent = userId;
+                        isAuthReady = true;
+                        loadCurrentTabData();
+                        loadDashboardData();
                     } else {
-                        console.log("User is signed out. Attempting to sign in.");
+                        console.log("onAuthStateChanged: User is signed out. Attempting to sign in anonymously.");
                         // IMPORTANTE: Para o erro "auth/configuration-not-found",
                         // verifique se o método de login anônimo está HABILITADO
                         // no seu Firebase Console (Authentication > Sign-in method).
-                        // Este é o fallback se __initial_auth_token não estiver definido.
+                        // E também verifique as restrições da API Key no Google Cloud Console.
                         try {
-                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                                console.log("Attempting sign in with custom token.");
-                                await signInWithCustomToken(auth, __initial_auth_token);
-                            } else {
-                                console.log("Attempting anonymous sign in as fallback. Ensure anonymous sign-in is enabled in Firebase Console.");
+                            // Forçando login anônimo para diagnóstico
+                            // if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            //     console.log("Attempting sign in with custom token.");
+                            //     await signInWithCustomToken(auth, __initial_auth_token);
+                            // } else {
+                                console.log("Tentando signInAnonymously...");
                                 await signInAnonymously(auth);
-                            }
+                                console.log("signInAnonymously tentado. auth.currentUser:", auth.currentUser);
+                                // O estado do usuário será atualizado pelo onAuthStateChanged se o login anônimo for bem-sucedido.
+                                // Não definimos isAuthReady aqui, pois esperamos o callback do onAuthStateChanged.
+                            // }
                         } catch (error) {
-                            console.error("Error during sign-in:", error);
+                            console.error("Erro CRÍTICO durante signInAnonymously:", error);
                             document.getElementById('userIdDisplay').textContent = "Erro de autenticação";
-                            // Exibir o erro detalhado para o usuário pode ajudar no diagnóstico
-                            showModalMessage("Erro de Autenticação", `Não foi possível autenticar: ${error.message} (Código: ${error.code}). Verifique a configuração do Firebase e se o método de login anônimo está habilitado no console.`);
+                            showModalMessage("Erro de Autenticação", `Não foi possível autenticar anonimamente: ${error.message} (Código: ${error.code}). Verifique a configuração do Firebase, as restrições da API Key e se o método de login anônimo está habilitado no console.`);
+                            isAuthReady = false; // Sinaliza que a autenticação falhou
                         }
                     }
-                    isAuthReady = true;
-                    loadCurrentTabData();
-                    loadDashboardData();
                 });
 
             } catch (error) {
-                console.error("Error initializing Firebase:", error);
-                showModalMessage("Erro de Inicialização", `Firebase não pôde ser inicializado: ${error.message}. Verifique a configuração.`);
+                console.error("Erro CRÍTICO ao inicializar Firebase:", error);
+                showModalMessage("Erro de Inicialização", `Firebase não pôde ser inicializado: ${error.message}. Verifique a configuração no código e no console.`);
                 document.getElementById('userIdDisplay').textContent = "Falha na inicialização";
+                isAuthReady = false;
             }
         }
-
 
         // --- Global Variables & DOM Elements ---
         const tabButtons = document.querySelectorAll('.tab-button');
@@ -430,15 +437,27 @@
         };
 
         function getCollectionPath(collectionName) {
+            if (!firestoreAppId) {
+                console.error("firestoreAppId não está definido! Verifique a firebaseConfig.");
+                throw new Error("Configuração do App ID do Firestore ausente.");
+            }
             return `artifacts/${firestoreAppId}/public/data/${collectionName}`;
         }
 
         // --- Modal Management ---
         function openModal(title, formHTML, submitHandler, currentData = null) {
+            if (!isAuthReady) {
+                showModalMessage("Autenticação Pendente", "Aguarde a conclusão da autenticação com o Firebase antes de prosseguir.");
+                return;
+            }
             modalTitle.textContent = title;
             genericForm.innerHTML = formHTML;
             genericForm.onsubmit = async (e) => {
                 e.preventDefault();
+                if (!isAuthReady || !userId) {
+                     showModalMessage("Erro de Autenticação", "Usuário não autenticado. Não é possível salvar os dados.");
+                     return;
+                }
                 formFeedback.textContent = '';
                 const formData = new FormData(genericForm);
                 const data = Object.fromEntries(formData.entries());
@@ -505,7 +524,7 @@
         tabButtons.forEach(button => {
             button.addEventListener('click', () => {
                 if (!isAuthReady) {
-                    showModalMessage("Aguarde", "A autenticação ainda está em progresso.");
+                    showModalMessage("Aguarde", "A autenticação com o Firebase ainda está em progresso ou falhou.");
                     return;
                 }
                 const tabName = button.dataset.tab;
@@ -521,7 +540,7 @@
                     content.classList.remove('active');
                 });
                 document.getElementById(`${tabName}Content`).classList.add('active');
-                loadCurrentTabData(); 
+                loadCurrentTabData();
             });
         });
 
@@ -531,59 +550,59 @@
         }
 
         function loadCurrentTabData() {
-            if (!isAuthReady || !db) {
-                console.log("Auth not ready or DB not initialized. Skipping data load for current tab.");
+            if (!isAuthReady || !db || !userId) { // Adicionado cheque de userId
+                console.log("Auth/DB não pronto ou usuário não logado. Pulando carregamento de dados da aba.");
+                if (!isAuthReady) showModalMessage("Aguarde", "A autenticação com o Firebase ainda está em progresso ou falhou.");
+                else if (!userId) showModalMessage("Erro", "Usuário não autenticado. Não é possível carregar dados.");
                 return;
             }
             const activeTab = getActiveTab();
-            console.log(`Loading data for active tab: ${activeTab}`);
+            console.log(`Carregando dados para aba ativa: ${activeTab}`);
             switch (activeTab) {
-                case 'products':
-                    loadProducts();
-                    break;
-                case 'customers':
-                    loadCustomers();
-                    break;
-                case 'suppliers':
-                    loadSuppliers();
-                    break;
-                case 'mechanics':
-                    loadMechanics();
-                    break;
-                case 'warranties':
-                    loadWarranties();
-                    break;
-                case 'dashboard':
-                    loadDashboardData();
-                    break;
+                case 'products': loadProducts(); break;
+                case 'customers': loadCustomers(); break;
+                case 'suppliers': loadSuppliers(); break;
+                case 'mechanics': loadMechanics(); break;
+                case 'warranties': loadWarranties(); break;
+                case 'dashboard': loadDashboardData(); break;
             }
         }
 
         // --- CRUD Operations ---
         async function addData(collectionName, data) {
             if (!db) throw new Error("Banco de dados não inicializado.");
-            await addDoc(collection(db, getCollectionPath(collectionName)), data);
+            if (!auth.currentUser) throw new Error("Usuário não autenticado. Não é possível adicionar dados.");
+            console.log(`Adicionando dados à coleção ${collectionName}:`, data);
+            return await addDoc(collection(db, getCollectionPath(collectionName)), data);
         }
 
         async function getData(collectionName) {
             if (!db) throw new Error("Banco de dados não inicializado.");
+            if (!auth.currentUser) { // Adicionado para consistência, embora regras de segurança devam proteger
+                 console.warn("Tentando ler dados sem usuário autenticado (getData).");
+                 // Dependendo das regras, isso pode falhar ou retornar vazio.
+            }
+            console.log(`Buscando dados da coleção ${collectionName}`);
             const querySnapshot = await getDocs(collection(db, getCollectionPath(collectionName)));
             const dataList = [];
             querySnapshot.forEach((doc) => {
                 dataList.push({ id: doc.id, ...doc.data() });
             });
+            console.log(`Dados recebidos de ${collectionName}:`, dataList.length, "itens");
             return dataList;
         }
-        
+
         async function updateData(collectionName, id, data) {
             if (!db) throw new Error("Banco de dados não inicializado.");
+            if (!auth.currentUser) throw new Error("Usuário não autenticado. Não é possível atualizar dados.");
             const docRef = doc(db, getCollectionPath(collectionName), id);
-            await updateDoc(docRef, data);
+            return await updateDoc(docRef, data);
         }
 
         async function deleteData(collectionName, id) {
             if (!db) throw new Error("Banco de dados não inicializado.");
-            await deleteDoc(doc(db, getCollectionPath(collectionName), id));
+            if (!auth.currentUser) throw new Error("Usuário não autenticado. Não é possível deletar dados.");
+            return await deleteDoc(doc(db, getCollectionPath(collectionName), id));
         }
 
         // --- Product Management ---
@@ -592,33 +611,14 @@
 
         const productFormHTML = (product = {}) => `
             <input type="hidden" name="id" value="${product.id || ''}">
-            <div>
-                <label for="productName" class="form-label">Nome do Produto:</label>
-                <input type="text" id="productName" name="name" class="input-field" value="${product.name || ''}" required>
-            </div>
-            <div class="mt-4">
-                <label for="productPartNumber" class="form-label">Código da Peça:</label>
-                <input type="text" id="productPartNumber" name="partNumber" class="input-field" value="${product.partNumber || ''}">
-            </div>
-            <div class="mt-4">
-                <label for="productSupplierId" class="form-label">Fornecedor:</label>
-                <select id="productSupplierId" name="supplierId" class="input-field">
-                    </select>
-            </div>
+            <div><label for="productName" class="form-label">Nome do Produto:</label><input type="text" id="productName" name="name" class="input-field" value="${product.name || ''}" required></div>
+            <div class="mt-4"><label for="productPartNumber" class="form-label">Código da Peça:</label><input type="text" id="productPartNumber" name="partNumber" class="input-field" value="${product.partNumber || ''}"></div>
+            <div class="mt-4"><label for="productSupplierId" class="form-label">Fornecedor:</label><select id="productSupplierId" name="supplierId" class="input-field"></select></div>
             <div class="mt-4 grid grid-cols-2 gap-4">
-                <div>
-                    <label for="productCostPrice" class="form-label">Preço de Custo (R$):</label>
-                    <input type="number" step="0.01" id="productCostPrice" name="costPrice" class="input-field" value="${product.costPrice || ''}">
-                </div>
-                <div>
-                    <label for="productSellingPrice" class="form-label">Preço de Venda (R$):</label>
-                    <input type="number" step="0.01" id="productSellingPrice" name="sellingPrice" class="input-field" value="${product.sellingPrice || ''}" required>
-                </div>
+                <div><label for="productCostPrice" class="form-label">Preço de Custo (R$):</label><input type="number" step="0.01" id="productCostPrice" name="costPrice" class="input-field" value="${product.costPrice || ''}"></div>
+                <div><label for="productSellingPrice" class="form-label">Preço de Venda (R$):</label><input type="number" step="0.01" id="productSellingPrice" name="sellingPrice" class="input-field" value="${product.sellingPrice || ''}" required></div>
             </div>
-            <div class="mt-4">
-                <label for="productWarrantyPeriod" class="form-label">Período de Garantia (ex: 3 meses, 1 ano):</label>
-                <input type="text" id="productWarrantyPeriod" name="warrantyPeriod" class="input-field" value="${product.warrantyPeriod || ''}">
-            </div>
+            <div class="mt-4"><label for="productWarrantyPeriod" class="form-label">Período de Garantia (ex: 3 meses, 1 ano):</label><input type="text" id="productWarrantyPeriod" name="warrantyPeriod" class="input-field" value="${product.warrantyPeriod || ''}"></div>
             <button type="submit" class="btn btn-primary mt-6 w-full">${product.id ? 'Atualizar' : 'Salvar'} Produto</button>
         `;
 
@@ -629,17 +629,13 @@
             try {
                 const suppliers = await getData(COLLECTIONS.SUPPLIERS);
                 if (suppliers.length === 0) {
-                    selectElement.innerHTML = '<option value="">Nenhum fornecedor cadastrado</option>';
-                    return;
+                    selectElement.innerHTML = '<option value="">Nenhum fornecedor cadastrado</option>'; return;
                 }
                 selectElement.innerHTML = '<option value="">Selecione um Fornecedor</option>';
                 suppliers.forEach(supplier => {
                     const option = document.createElement('option');
-                    option.value = supplier.id;
-                    option.textContent = supplier.name;
-                    if (supplier.id === selectedSupplierId) {
-                        option.selected = true;
-                    }
+                    option.value = supplier.id; option.textContent = supplier.name;
+                    if (supplier.id === selectedSupplierId) option.selected = true;
                     selectElement.appendChild(option);
                 });
             } catch (error) {
@@ -648,545 +644,91 @@
             }
         }
 
-
         addProductBtn.onclick = () => {
             openModal('Adicionar Novo Produto', productFormHTML(), async (data) => {
-                await addData(COLLECTIONS.PRODUCTS, data);
-                loadProducts();
+                await addData(COLLECTIONS.PRODUCTS, data); loadProducts();
             });
             populateSupplierDropdown('productSupplierId');
         };
-
         async function editProduct(product) {
             openModal('Editar Produto', productFormHTML(product), async (data) => {
-                await updateData(COLLECTIONS.PRODUCTS, product.id, data);
-                loadProducts();
+                await updateData(COLLECTIONS.PRODUCTS, product.id, data); loadProducts();
             }, product);
             populateSupplierDropdown('productSupplierId', product.supplierId);
         }
-
         async function deleteProduct(productId, productName) {
-            showConfirmModal('Confirmar Exclusão', `Tem certeza que deseja excluir o produto "${productName}"? Esta ação não pode ser desfeita.`, async () => {
+            showConfirmModal('Confirmar Exclusão', `Tem certeza que deseja excluir o produto "${productName}"?`, async () => {
                 try {
-                    const warrantiesCollectionPath = getCollectionPath(COLLECTIONS.WARRANTIES);
-                    const q = query(collection(db, warrantiesCollectionPath), where("productId", "==", productId));
+                    const q = query(collection(db, getCollectionPath(COLLECTIONS.WARRANTIES)), where("productId", "==", productId));
                     const warrantySnapshot = await getDocs(q);
-
                     if (!warrantySnapshot.empty) {
-                        showModalMessage("Erro ao Excluir", `Não é possível excluir o produto "${productName}" pois ele está associado a ${warrantySnapshot.size} garantia(s). Remova as garantias associadas primeiro.`);
-                        return;
+                        showModalMessage("Erro", `Produto "${productName}" associado a ${warrantySnapshot.size} garantia(s).`); return;
                     }
-
                     await deleteData(COLLECTIONS.PRODUCTS, productId);
-                    showModalMessage("Sucesso", `Produto "${productName}" excluído com sucesso.`);
-                    loadProducts();
-                } catch (error) {
-                    console.error("Error deleting product:", error);
-                    showModalMessage("Erro ao Excluir", `Não foi possível excluir o produto: ${error.message}`);
-                }
+                    showModalMessage("Sucesso", `Produto "${productName}" excluído.`); loadProducts();
+                } catch (error) { showModalMessage("Erro", `Excluir produto: ${error.message}`); }
             });
         }
-
-
         async function loadProducts() {
             if (!isAuthReady || !db) return;
             productsTableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="loading-spinner"></div></td></tr>';
             try {
                 const products = await getData(COLLECTIONS.PRODUCTS);
-                const suppliers = await getData(COLLECTIONS.SUPPLIERS); 
-                const supplierMap = suppliers.reduce((map, supplier) => {
-                    map[supplier.id] = supplier.name;
-                    return map;
-                }, {});
-
+                const suppliers = await getData(COLLECTIONS.SUPPLIERS);
+                const supplierMap = suppliers.reduce((map, s) => { map[s.id] = s.name; return map; }, {});
                 if (products.length === 0) {
-                    productsTableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">Nenhum produto cadastrado.</td></tr>';
-                    return;
+                    productsTableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4">Nenhum produto.</td></tr>'; return;
                 }
                 productsTableBody.innerHTML = '';
-                products.forEach(product => {
+                products.forEach(p => {
                     const row = productsTableBody.insertRow();
-                    row.innerHTML = `
-                        <td class="py-3 px-4">${product.name || 'N/A'}</td>
-                        <td class="py-3 px-4">${product.partNumber || 'N/A'}</td>
-                        <td class="py-3 px-4">${supplierMap[product.supplierId] || product.supplierId || 'N/A'}</td>
-                        <td class="py-3 px-4">R$ ${parseFloat(product.sellingPrice || 0).toFixed(2)}</td>
-                        <td class="py-3 px-4">${product.warrantyPeriod || 'N/A'}</td>
-                        <td class="py-3 px-4 whitespace-nowrap">
-                            <button class="text-blue-600 hover:text-blue-800 mr-2" title="Editar"><i class="fas fa-edit"></i></button>
-                            <button class="text-red-600 hover:text-red-800" title="Excluir"><i class="fas fa-trash"></i></button>
-                        </td>
-                    `;
-                    row.querySelector('.fa-edit').parentElement.onclick = () => editProduct(product);
-                    row.querySelector('.fa-trash').parentElement.onclick = () => deleteProduct(product.id, product.name);
+                    row.innerHTML = `<td class="py-3 px-4">${p.name||'N/A'}</td><td class="py-3 px-4">${p.partNumber||'N/A'}</td><td class="py-3 px-4">${supplierMap[p.supplierId]||p.supplierId||'N/A'}</td><td class="py-3 px-4">R$ ${parseFloat(p.sellingPrice||0).toFixed(2)}</td><td class="py-3 px-4">${p.warrantyPeriod||'N/A'}</td><td class="py-3 px-4 whitespace-nowrap"><button class="text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button><button class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button></td>`;
+                    row.querySelector('.fa-edit').parentElement.onclick = () => editProduct(p);
+                    row.querySelector('.fa-trash').parentElement.onclick = () => deleteProduct(p.id, p.name);
                 });
-            } catch (error) {
-                console.error("Error loading products:", error);
-                productsTableBody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-red-500">Erro ao carregar produtos: ${error.message}</td></tr>`;
-            }
+            } catch (e) { productsTableBody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-red-500">Erro: ${e.message}</td></tr>`; }
         }
 
         // --- Customer Management ---
         const customersTableBody = document.getElementById('customersTableBody');
         const addCustomerBtn = document.getElementById('addCustomerBtn');
-
-        const customerFormHTML = (customer = {}) => `
-            <input type="hidden" name="id" value="${customer.id || ''}">
-            <div>
-                <label for="customerName" class="form-label">Nome Completo:</label>
-                <input type="text" id="customerName" name="name" class="input-field" value="${customer.name || ''}" required>
-            </div>
-            <div class="mt-4">
-                <label for="customerCpf" class="form-label">CPF:</label>
-                <input type="text" id="customerCpf" name="cpf" class="input-field" value="${customer.cpf || ''}">
-            </div>
-            <div class="mt-4">
-                <label for="customerPhone" class="form-label">Telefone:</label>
-                <input type="tel" id="customerPhone" name="phone" class="input-field" value="${customer.phone || ''}">
-            </div>
-            <div class="mt-4">
-                <label for="customerEmail" class="form-label">Email:</label>
-                <input type="email" id="customerEmail" name="email" class="input-field" value="${customer.email || ''}">
-            </div>
-            <div class="mt-4">
-                <label for="customerAddress" class="form-label">Endereço:</label>
-                <input type="text" id="customerAddress" name="address" class="input-field" value="${customer.address || ''}">
-            </div>
-            <button type="submit" class="btn btn-primary mt-6 w-full">${customer.id ? 'Atualizar' : 'Salvar'} Cliente</button>
-        `;
-
-        addCustomerBtn.onclick = () => {
-            openModal('Adicionar Novo Cliente', customerFormHTML(), async (data) => {
-                await addData(COLLECTIONS.CUSTOMERS, data);
-                loadCustomers();
-            });
-        };
-
-        async function editCustomer(customer) {
-            openModal('Editar Cliente', customerFormHTML(customer), async (data) => {
-                await updateData(COLLECTIONS.CUSTOMERS, customer.id, data);
-                loadCustomers();
-            }, customer);
-        }
-
-        async function deleteCustomer(customerId, customerName) {
-             showConfirmModal('Confirmar Exclusão', `Tem certeza que deseja excluir o cliente "${customerName}"? Esta ação não pode ser desfeita.`, async () => {
-                try {
-                    const warrantiesCollectionPath = getCollectionPath(COLLECTIONS.WARRANTIES);
-                    const q = query(collection(db, warrantiesCollectionPath), where("customerId", "==", customerId));
-                    const warrantySnapshot = await getDocs(q);
-
-                    if (!warrantySnapshot.empty) {
-                        showModalMessage("Erro ao Excluir", `Não é possível excluir o cliente "${customerName}" pois ele está associado a ${warrantySnapshot.size} garantia(s). Remova as garantias associadas primeiro.`);
-                        return;
-                    }
-
-                    await deleteData(COLLECTIONS.CUSTOMERS, customerId);
-                    showModalMessage("Sucesso", `Cliente "${customerName}" excluído com sucesso.`);
-                    loadCustomers();
-                } catch (error) {
-                    console.error("Error deleting customer:", error);
-                    showModalMessage("Erro ao Excluir", `Não foi possível excluir o cliente: ${error.message}`);
-                }
-            });
-        }
-
-        async function loadCustomers() {
-            if (!isAuthReady || !db) return;
-            customersTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="loading-spinner"></div></td></tr>';
-            try {
-                const customers = await getData(COLLECTIONS.CUSTOMERS);
-                if (customers.length === 0) {
-                    customersTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">Nenhum cliente cadastrado.</td></tr>';
-                    return;
-                }
-                customersTableBody.innerHTML = '';
-                customers.forEach(customer => {
-                    const row = customersTableBody.insertRow();
-                    row.innerHTML = `
-                        <td class="py-3 px-4">${customer.name || 'N/A'}</td>
-                        <td class="py-3 px-4">${customer.cpf || 'N/A'}</td>
-                        <td class="py-3 px-4">${customer.phone || 'N/A'}</td>
-                        <td class="py-3 px-4">${customer.email || 'N/A'}</td>
-                        <td class="py-3 px-4 whitespace-nowrap">
-                            <button class="text-blue-600 hover:text-blue-800 mr-2" title="Editar"><i class="fas fa-edit"></i></button>
-                            <button class="text-red-600 hover:text-red-800" title="Excluir"><i class="fas fa-trash"></i></button>
-                        </td>
-                    `;
-                    row.querySelector('.fa-edit').parentElement.onclick = () => editCustomer(customer);
-                    row.querySelector('.fa-trash').parentElement.onclick = () => deleteCustomer(customer.id, customer.name);
-                });
-            } catch (error) {
-                console.error("Error loading customers:", error);
-                customersTableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-500">Erro ao carregar clientes: ${error.message}</td></tr>`;
-            }
-        }
+        const customerFormHTML = (c={}) => `<input type="hidden" name="id" value="${c.id||''}"><div class="mt-4"><label class="form-label">Nome:</label><input type="text" name="name" class="input-field" value="${c.name||''}" required></div><div class="mt-4"><label class="form-label">CPF:</label><input type="text" name="cpf" class="input-field" value="${c.cpf||''}"></div><div class="mt-4"><label class="form-label">Telefone:</label><input type="tel" name="phone" class="input-field" value="${c.phone||''}"></div><div class="mt-4"><label class="form-label">Email:</label><input type="email" name="email" class="input-field" value="${c.email||''}"></div><div class="mt-4"><label class="form-label">Endereço:</label><input type="text" name="address" class="input-field" value="${c.address||''}"></div><button type="submit" class="btn btn-primary mt-6 w-full">${c.id?'Atualizar':'Salvar'} Cliente</button>`;
+        addCustomerBtn.onclick=()=>{openModal('Novo Cliente',customerFormHTML(),async d=>{await addData(COLLECTIONS.CUSTOMERS,d);loadCustomers();});};
+        async function editCustomer(c){openModal('Editar Cliente',customerFormHTML(c),async d=>{await updateData(COLLECTIONS.CUSTOMERS,c.id,d);loadCustomers();},c);}
+        async function deleteCustomer(id,name){showConfirmModal('Excluir',`Excluir cliente "${name}"?`,async()=>{try{const q=query(collection(db,getCollectionPath(COLLECTIONS.WARRANTIES)),where("customerId","==",id));const snap=await getDocs(q);if(!snap.empty){showModalMessage("Erro",`Cliente "${name}" associado a ${snap.size} garantia(s).`);return;}await deleteData(COLLECTIONS.CUSTOMERS,id);showModalMessage("Sucesso",`Cliente "${name}" excluído.`);loadCustomers();}catch(e){showModalMessage("Erro",`Excluir cliente: ${e.message}`);}});};
+        async function loadCustomers(){if(!isAuthReady||!db)return;customersTableBody.innerHTML='<tr><td colspan="5" class="text-center py-4"><div class="loading-spinner"></div></td></tr>';try{const l=await getData(COLLECTIONS.CUSTOMERS);if(l.length===0){customersTableBody.innerHTML='<tr><td colspan="5" class="text-center py-4">Nenhum cliente.</td></tr>';return;}customersTableBody.innerHTML='';l.forEach(c=>{const r=customersTableBody.insertRow();r.innerHTML=`<td class="py-3 px-4">${c.name||'N/A'}</td><td class="py-3 px-4">${c.cpf||'N/A'}</td><td class="py-3 px-4">${c.phone||'N/A'}</td><td class="py-3 px-4">${c.email||'N/A'}</td><td class="py-3 px-4"><button class="text-blue-600 mr-2"><i class="fas fa-edit"></i></button><button class="text-red-600"><i class="fas fa-trash"></i></button></td>`;r.querySelector('.fa-edit').parentElement.onclick=()=>editCustomer(c);r.querySelector('.fa-trash').parentElement.onclick=()=>deleteCustomer(c.id,c.name);});}catch(e){customersTableBody.innerHTML=`<tr><td colspan="5" class="text-center py-4 text-red-500">Erro: ${e.message}</td></tr>`;}}
 
         // --- Supplier Management ---
         const suppliersTableBody = document.getElementById('suppliersTableBody');
         const addSupplierBtn = document.getElementById('addSupplierBtn');
-
-        const supplierFormHTML = (supplier = {}) => `
-            <input type="hidden" name="id" value="${supplier.id || ''}">
-            <div>
-                <label for="supplierName" class="form-label">Nome do Fornecedor:</label>
-                <input type="text" id="supplierName" name="name" class="input-field" value="${supplier.name || ''}" required>
-            </div>
-            <div class="mt-4">
-                <label for="supplierCnpj" class="form-label">CNPJ:</label>
-                <input type="text" id="supplierCnpj" name="cnpj" class="input-field" value="${supplier.cnpj || ''}">
-            </div>
-            <div class="mt-4">
-                <label for="supplierPhone" class="form-label">Telefone:</label>
-                <input type="tel" id="supplierPhone" name="phone" class="input-field" value="${supplier.phone || ''}">
-            </div>
-            <div class="mt-4">
-                <label for="supplierEmail" class="form-label">Email:</label>
-                <input type="email" id="supplierEmail" name="email" class="input-field" value="${supplier.email || ''}">
-            </div>
-            <div class="mt-4">
-                <label for="supplierAddress" class="form-label">Endereço:</label>
-                <input type="text" id="supplierAddress" name="address" class="input-field" value="${supplier.address || ''}">
-            </div>
-            <button type="submit" class="btn btn-primary mt-6 w-full">${supplier.id ? 'Atualizar' : 'Salvar'} Fornecedor</button>
-        `;
-
-        addSupplierBtn.onclick = () => {
-            openModal('Adicionar Novo Fornecedor', supplierFormHTML(), async (data) => {
-                await addData(COLLECTIONS.SUPPLIERS, data);
-                loadSuppliers();
-            });
-        };
-
-        async function editSupplier(supplier) {
-            openModal('Editar Fornecedor', supplierFormHTML(supplier), async (data) => {
-                await updateData(COLLECTIONS.SUPPLIERS, supplier.id, data);
-                loadSuppliers();
-            }, supplier);
-        }
-
-        async function deleteSupplier(supplierId, supplierName) {
-            showConfirmModal('Confirmar Exclusão', `Tem certeza que deseja excluir o fornecedor "${supplierName}"? Esta ação não pode ser desfeita.`, async () => {
-                try {
-                    const productsCollectionPath = getCollectionPath(COLLECTIONS.PRODUCTS);
-                    const q = query(collection(db, productsCollectionPath), where("supplierId", "==", supplierId));
-                    const productSnapshot = await getDocs(q);
-
-                    if (!productSnapshot.empty) {
-                        showModalMessage("Erro ao Excluir", `Não é possível excluir o fornecedor "${supplierName}" pois ele está associado a ${productSnapshot.size} produto(s). Atualize os produtos associados primeiro.`);
-                        return;
-                    }
-                    await deleteData(COLLECTIONS.SUPPLIERS, supplierId);
-                    showModalMessage("Sucesso", `Fornecedor "${supplierName}" excluído com sucesso.`);
-                    loadSuppliers();
-                } catch (error) {
-                    console.error("Error deleting supplier:", error);
-                    showModalMessage("Erro ao Excluir", `Não foi possível excluir o fornecedor: ${error.message}`);
-                }
-            });
-        }
-
-        async function loadSuppliers() {
-            if (!isAuthReady || !db) return;
-            suppliersTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="loading-spinner"></div></td></tr>';
-            try {
-                const suppliers = await getData(COLLECTIONS.SUPPLIERS);
-                if (suppliers.length === 0) {
-                    suppliersTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">Nenhum fornecedor cadastrado.</td></tr>';
-                    return;
-                }
-                suppliersTableBody.innerHTML = '';
-                suppliers.forEach(supplier => {
-                    const row = suppliersTableBody.insertRow();
-                    row.innerHTML = `
-                        <td class="py-3 px-4">${supplier.name || 'N/A'}</td>
-                        <td class="py-3 px-4">${supplier.cnpj || 'N/A'}</td>
-                        <td class="py-3 px-4">${supplier.phone || 'N/A'}</td>
-                        <td class="py-3 px-4">${supplier.email || 'N/A'}</td>
-                        <td class="py-3 px-4 whitespace-nowrap">
-                            <button class="text-blue-600 hover:text-blue-800 mr-2" title="Editar"><i class="fas fa-edit"></i></button>
-                            <button class="text-red-600 hover:text-red-800" title="Excluir"><i class="fas fa-trash"></i></button>
-                        </td>
-                    `;
-                    row.querySelector('.fa-edit').parentElement.onclick = () => editSupplier(supplier);
-                    row.querySelector('.fa-trash').parentElement.onclick = () => deleteSupplier(supplier.id, supplier.name);
-                });
-            } catch (error) {
-                console.error("Error loading suppliers:", error);
-                suppliersTableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-500">Erro ao carregar fornecedores: ${error.message}</td></tr>`;
-            }
-        }
+        const supplierFormHTML=(s={})=>`<input type="hidden" name="id" value="${s.id||''}"><div class="mt-4"><label class="form-label">Nome:</label><input type="text" name="name" class="input-field" value="${s.name||''}" required></div><div class="mt-4"><label class="form-label">CNPJ:</label><input type="text" name="cnpj" class="input-field" value="${s.cnpj||''}"></div><div class="mt-4"><label class="form-label">Telefone:</label><input type="tel" name="phone" class="input-field" value="${s.phone||''}"></div><div class="mt-4"><label class="form-label">Email:</label><input type="email" name="email" class="input-field" value="${s.email||''}"></div><div class="mt-4"><label class="form-label">Endereço:</label><input type="text" name="address" class="input-field" value="${s.address||''}"></div><button type="submit" class="btn btn-primary mt-6 w-full">${s.id?'Atualizar':'Salvar'} Fornecedor</button>`;
+        addSupplierBtn.onclick=()=>{openModal('Novo Fornecedor',supplierFormHTML(),async d=>{await addData(COLLECTIONS.SUPPLIERS,d);loadSuppliers();});};
+        async function editSupplier(s){openModal('Editar Fornecedor',supplierFormHTML(s),async d=>{await updateData(COLLECTIONS.SUPPLIERS,s.id,d);loadSuppliers();},s);}
+        async function deleteSupplier(id,name){showConfirmModal('Excluir',`Excluir fornecedor "${name}"?`,async()=>{try{const q=query(collection(db,getCollectionPath(COLLECTIONS.PRODUCTS)),where("supplierId","==",id));const snap=await getDocs(q);if(!snap.empty){showModalMessage("Erro",`Fornecedor "${name}" associado a ${snap.size} produto(s).`);return;}await deleteData(COLLECTIONS.SUPPLIERS,id);showModalMessage("Sucesso",`Fornecedor "${name}" excluído.`);loadSuppliers();}catch(e){showModalMessage("Erro",`Excluir fornecedor: ${e.message}`);}});};
+        async function loadSuppliers(){if(!isAuthReady||!db)return;suppliersTableBody.innerHTML='<tr><td colspan="5" class="text-center py-4"><div class="loading-spinner"></div></td></tr>';try{const l=await getData(COLLECTIONS.SUPPLIERS);if(l.length===0){suppliersTableBody.innerHTML='<tr><td colspan="5" class="text-center py-4">Nenhum fornecedor.</td></tr>';return;}suppliersTableBody.innerHTML='';l.forEach(s=>{const r=suppliersTableBody.insertRow();r.innerHTML=`<td class="py-3 px-4">${s.name||'N/A'}</td><td class="py-3 px-4">${s.cnpj||'N/A'}</td><td class="py-3 px-4">${s.phone||'N/A'}</td><td class="py-3 px-4">${s.email||'N/A'}</td><td class="py-3 px-4"><button class="text-blue-600 mr-2"><i class="fas fa-edit"></i></button><button class="text-red-600"><i class="fas fa-trash"></i></button></td>`;r.querySelector('.fa-edit').parentElement.onclick=()=>editSupplier(s);r.querySelector('.fa-trash').parentElement.onclick=()=>deleteSupplier(s.id,s.name);});}catch(e){suppliersTableBody.innerHTML=`<tr><td colspan="5" class="text-center py-4 text-red-500">Erro: ${e.message}</td></tr>`;}}
 
         // --- Mechanic Management ---
         const mechanicsTableBody = document.getElementById('mechanicsTableBody');
         const addMechanicBtn = document.getElementById('addMechanicBtn');
-
-        const mechanicFormHTML = (mechanic = {}) => `
-            <input type="hidden" name="id" value="${mechanic.id || ''}">
-            <div>
-                <label for="mechanicName" class="form-label">Nome do Mecânico:</label>
-                <input type="text" id="mechanicName" name="name" class="input-field" value="${mechanic.name || ''}" required>
-            </div>
-            <div class="mt-4">
-                <label for="mechanicCpfCnpj" class="form-label">CPF/CNPJ:</label>
-                <input type="text" id="mechanicCpfCnpj" name="cpf_cnpj" class="input-field" value="${mechanic.cpf_cnpj || ''}">
-            </div>
-            <div class="mt-4">
-                <label for="mechanicPhone" class="form-label">Telefone:</label>
-                <input type="tel" id="mechanicPhone" name="phone" class="input-field" value="${mechanic.phone || ''}">
-            </div>
-            <div class="mt-4">
-                <label for="mechanicWorkshopName" class="form-label">Nome da Oficina (opcional):</label>
-                <input type="text" id="mechanicWorkshopName" name="workshopName" class="input-field" value="${mechanic.workshopName || ''}">
-            </div>
-            <button type="submit" class="btn btn-primary mt-6 w-full">${mechanic.id ? 'Atualizar' : 'Salvar'} Mecânico</button>
-        `;
-
-        addMechanicBtn.onclick = () => {
-            openModal('Adicionar Novo Mecânico', mechanicFormHTML(), async (data) => {
-                await addData(COLLECTIONS.MECHANICS, data);
-                loadMechanics();
-            });
-        };
-
-        async function editMechanic(mechanic) {
-            openModal('Editar Mecânico', mechanicFormHTML(mechanic), async (data) => {
-                await updateData(COLLECTIONS.MECHANICS, mechanic.id, data);
-                loadMechanics();
-            }, mechanic);
-        }
-
-        async function deleteMechanic(mechanicId, mechanicName) {
-            showConfirmModal('Confirmar Exclusão', `Tem certeza que deseja excluir o mecânico "${mechanicName}"? Esta ação não pode ser desfeita.`, async () => {
-                 try {
-                    const warrantiesCollectionPath = getCollectionPath(COLLECTIONS.WARRANTIES);
-                    const q = query(collection(db, warrantiesCollectionPath), where("mechanicId", "==", mechanicId));
-                    const warrantySnapshot = await getDocs(q);
-
-                    if (!warrantySnapshot.empty) {
-                        showModalMessage("Erro ao Excluir", `Não é possível excluir o mecânico "${mechanicName}" pois ele está associado a ${warrantySnapshot.size} garantia(s). Remova as garantias associadas primeiro.`);
-                        return;
-                    }
-
-                    await deleteData(COLLECTIONS.MECHANICS, mechanicId);
-                    showModalMessage("Sucesso", `Mecânico "${mechanicName}" excluído com sucesso.`);
-                    loadMechanics();
-                } catch (error) {
-                    console.error("Error deleting mechanic:", error);
-                    showModalMessage("Erro ao Excluir", `Não foi possível excluir o mecânico: ${error.message}`);
-                }
-            });
-        }
-
-        async function loadMechanics() {
-            if (!isAuthReady || !db) return;
-            mechanicsTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="loading-spinner"></div></td></tr>';
-            try {
-                const mechanics = await getData(COLLECTIONS.MECHANICS);
-                if (mechanics.length === 0) {
-                    mechanicsTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">Nenhum mecânico cadastrado.</td></tr>';
-                    return;
-                }
-                mechanicsTableBody.innerHTML = '';
-                mechanics.forEach(mechanic => {
-                    const row = mechanicsTableBody.insertRow();
-                    row.innerHTML = `
-                        <td class="py-3 px-4">${mechanic.name || 'N/A'}</td>
-                        <td class="py-3 px-4">${mechanic.cpf_cnpj || 'N/A'}</td>
-                        <td class="py-3 px-4">${mechanic.phone || 'N/A'}</td>
-                        <td class="py-3 px-4">${mechanic.workshopName || 'N/A'}</td>
-                        <td class="py-3 px-4 whitespace-nowrap">
-                            <button class="text-blue-600 hover:text-blue-800 mr-2" title="Editar"><i class="fas fa-edit"></i></button>
-                            <button class="text-red-600 hover:text-red-800" title="Excluir"><i class="fas fa-trash"></i></button>
-                        </td>
-                    `;
-                    row.querySelector('.fa-edit').parentElement.onclick = () => editMechanic(mechanic);
-                    row.querySelector('.fa-trash').parentElement.onclick = () => deleteMechanic(mechanic.id, mechanic.name);
-                });
-            } catch (error) {
-                console.error("Error loading mechanics:", error);
-                mechanicsTableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-500">Erro ao carregar mecânicos: ${error.message}</td></tr>`;
-            }
-        }
+        const mechanicFormHTML=(m={})=>`<input type="hidden" name="id" value="${m.id||''}"><div class="mt-4"><label class="form-label">Nome:</label><input type="text" name="name" class="input-field" value="${m.name||''}" required></div><div class="mt-4"><label class="form-label">CPF/CNPJ:</label><input type="text" name="cpf_cnpj" class="input-field" value="${m.cpf_cnpj||''}"></div><div class="mt-4"><label class="form-label">Telefone:</label><input type="tel" name="phone" class="input-field" value="${m.phone||''}"></div><div class="mt-4"><label class="form-label">Oficina:</label><input type="text" name="workshopName" class="input-field" value="${m.workshopName||''}"></div><button type="submit" class="btn btn-primary mt-6 w-full">${m.id?'Atualizar':'Salvar'} Mecânico</button>`;
+        addMechanicBtn.onclick=()=>{openModal('Novo Mecânico',mechanicFormHTML(),async d=>{await addData(COLLECTIONS.MECHANICS,d);loadMechanics();});};
+        async function editMechanic(m){openModal('Editar Mecânico',mechanicFormHTML(m),async d=>{await updateData(COLLECTIONS.MECHANICS,m.id,d);loadMechanics();},m);}
+        async function deleteMechanic(id,name){showConfirmModal('Excluir',`Excluir mecânico "${name}"?`,async()=>{try{const q=query(collection(db,getCollectionPath(COLLECTIONS.WARRANTIES)),where("mechanicId","==",id));const snap=await getDocs(q);if(!snap.empty){showModalMessage("Erro",`Mecânico "${name}" associado a ${snap.size} garantia(s).`);return;}await deleteData(COLLECTIONS.MECHANICS,id);showModalMessage("Sucesso",`Mecânico "${name}" excluído.`);loadMechanics();}catch(e){showModalMessage("Erro",`Excluir mecânico: ${e.message}`);}});};
+        async function loadMechanics(){if(!isAuthReady||!db)return;mechanicsTableBody.innerHTML='<tr><td colspan="5" class="text-center py-4"><div class="loading-spinner"></div></td></tr>';try{const l=await getData(COLLECTIONS.MECHANICS);if(l.length===0){mechanicsTableBody.innerHTML='<tr><td colspan="5" class="text-center py-4">Nenhum mecânico.</td></tr>';return;}mechanicsTableBody.innerHTML='';l.forEach(m=>{const r=mechanicsTableBody.insertRow();r.innerHTML=`<td class="py-3 px-4">${m.name||'N/A'}</td><td class="py-3 px-4">${m.cpf_cnpj||'N/A'}</td><td class="py-3 px-4">${m.phone||'N/A'}</td><td class="py-3 px-4">${m.workshopName||'N/A'}</td><td class="py-3 px-4"><button class="text-blue-600 mr-2"><i class="fas fa-edit"></i></button><button class="text-red-600"><i class="fas fa-trash"></i></button></td>`;r.querySelector('.fa-edit').parentElement.onclick=()=>editMechanic(m);r.querySelector('.fa-trash').parentElement.onclick=()=>deleteMechanic(m.id,m.name);});}catch(e){mechanicsTableBody.innerHTML=`<tr><td colspan="5" class="text-center py-4 text-red-500">Erro: ${e.message}</td></tr>`;}}
 
         // --- Warranty Management ---
         const warrantiesTableBody = document.getElementById('warrantiesTableBody');
         const addWarrantyBtn = document.getElementById('addWarrantyBtn');
         const warrantyStatusOptions = ["Em análise", "Aprovada", "Recusada", "Produto trocado", "Reparado", "Aguardando peça", "Finalizada"];
-
-        const warrantyFormHTML = (warranty = {}) => `
-            <input type="hidden" name="id" value="${warranty.id || ''}">
-            <div>
-                <label for="warrantyProductId" class="form-label">Produto:</label>
-                <select id="warrantyProductId" name="productId" class="input-field" required>
-                    </select>
-            </div>
-            <div class="mt-4">
-                <label for="warrantyCustomerId" class="form-label">Cliente:</label>
-                <select id="warrantyCustomerId" name="customerId" class="input-field" required>
-                    </select>
-            </div>
-            <div class="mt-4">
-                <label for="warrantyMechanicId" class="form-label">Mecânico (opcional):</label>
-                <select id="warrantyMechanicId" name="mechanicId" class="input-field">
-                    </select>
-            </div>
-            <div class="mt-4">
-                <label for="warrantySaleDate" class="form-label">Data da Venda:</label>
-                <input type="date" id="warrantySaleDate" name="saleDate" class="input-field" value="${warranty.saleDate || ''}" required>
-            </div>
-            <div class="mt-4">
-                <label for="warrantyInvoiceNumber" class="form-label">Número da Nota Fiscal:</label>
-                <input type="text" id="warrantyInvoiceNumber" name="invoiceNumber" class="input-field" value="${warranty.invoiceNumber || ''}">
-            </div>
-            <div class="mt-4">
-                <label for="warrantyProblemDescription" class="form-label">Descrição do Problema:</label>
-                <textarea id="warrantyProblemDescription" name="problemDescription" class="input-field" rows="3" required>${warranty.problemDescription || ''}</textarea>
-            </div>
-            <div class="mt-4">
-                <label for="warrantyStatus" class="form-label">Status:</label>
-                <select id="warrantyStatus" name="status" class="input-field" required>
-                    ${warrantyStatusOptions.map(status => `<option value="${status}" ${warranty.status === status ? 'selected' : ''}>${status}</option>`).join('')}
-                </select>
-            </div>
-            <div class="mt-4">
-                <label for="warrantyResolutionDate" class="form-label">Data da Resolução (opcional):</label>
-                <input type="date" id="warrantyResolutionDate" name="resolutionDate" class="input-field" value="${warranty.resolutionDate || ''}">
-            </div>
-            <div class="mt-4">
-                <label for="warrantyNotes" class="form-label">Observações (opcional):</label>
-                <textarea id="warrantyNotes" name="notes" class="input-field" rows="2">${warranty.notes || ''}</textarea>
-            </div>
-            <button type="submit" class="btn btn-primary mt-6 w-full">${warranty.id ? 'Atualizar' : 'Salvar'} Garantia</button>
-        `;
-
-        async function populateSelectWithOptions(selectElementId, collectionName, nameField, selectedId = null, placeholder = "Selecione") {
-            const selectElement = document.getElementById(selectElementId);
-            if (!selectElement) {
-                console.error(`Select element ${selectElementId} not found.`);
-                return;
-            }
-            selectElement.innerHTML = `<option value="">Carregando ${placeholder.toLowerCase()}...</option>`;
-            try {
-                const items = await getData(collectionName);
-                if (items.length === 0) {
-                    selectElement.innerHTML = `<option value="">Nenhum ${placeholder.toLowerCase()} cadastrado</option>`;
-                    return;
-                }
-                selectElement.innerHTML = `<option value="">${placeholder}</option>`;
-                items.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.id;
-                    option.textContent = item[nameField] || item.name || 'Nome Indisponível'; 
-                    if (item.id === selectedId) {
-                        option.selected = true;
-                    }
-                    selectElement.appendChild(option);
-                });
-            } catch (error) {
-                console.error(`Error populating ${selectElementId}:`, error);
-                selectElement.innerHTML = `<option value="">Erro ao carregar</option>`;
-            }
-        }
-
-
-        addWarrantyBtn.onclick = () => {
-            openModal('Registrar Nova Garantia', warrantyFormHTML(), async (data) => {
-                await addData(COLLECTIONS.WARRANTIES, data);
-                loadWarranties();
-                loadDashboardData(); 
-            });
-            populateSelectWithOptions('warrantyProductId', COLLECTIONS.PRODUCTS, 'name', null, 'Selecione o Produto');
-            populateSelectWithOptions('warrantyCustomerId', COLLECTIONS.CUSTOMERS, 'name', null, 'Selecione o Cliente');
-            populateSelectWithOptions('warrantyMechanicId', COLLECTIONS.MECHANICS, 'name', null, 'Selecione o Mecânico (Opcional)');
-        };
-
-        async function editWarranty(warranty) {
-            openModal('Editar Garantia', warrantyFormHTML(warranty), async (data) => {
-                await updateData(COLLECTIONS.WARRANTIES, warranty.id, data);
-                loadWarranties();
-                loadDashboardData(); 
-            }, warranty);
-            populateSelectWithOptions('warrantyProductId', COLLECTIONS.PRODUCTS, 'name', warranty.productId, 'Selecione o Produto');
-            populateSelectWithOptions('warrantyCustomerId', COLLECTIONS.CUSTOMERS, 'name', warranty.customerId, 'Selecione o Cliente');
-            populateSelectWithOptions('warrantyMechanicId', COLLECTIONS.MECHANICS, 'name', warranty.mechanicId, 'Selecione o Mecânico (Opcional)');
-        }
-
-        async function deleteWarranty(warrantyId) {
-             showConfirmModal('Confirmar Exclusão', `Tem certeza que deseja excluir esta garantia? Esta ação não pode ser desfeita.`, async () => {
-                try {
-                    await deleteData(COLLECTIONS.WARRANTIES, warrantyId);
-                    showModalMessage("Sucesso", `Garantia excluída com sucesso.`);
-                    loadWarranties();
-                    loadDashboardData(); 
-                } catch (error) {
-                    console.error("Error deleting warranty:", error);
-                    showModalMessage("Erro ao Excluir", `Não foi possível excluir a garantia: ${error.message}`);
-                }
-            });
-        }
-
-        async function loadWarranties() {
-            if (!isAuthReady || !db) return;
-            warrantiesTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="loading-spinner"></div></td></tr>';
-            try {
-                const warranties = await getData(COLLECTIONS.WARRANTIES);
-                const products = await getData(COLLECTIONS.PRODUCTS);
-                const customers = await getData(COLLECTIONS.CUSTOMERS);
-
-                const productMap = products.reduce((map, item) => { map[item.id] = item.name; return map; }, {});
-                const customerMap = customers.reduce((map, item) => { map[item.id] = item.name; return map; }, {});
-
-                if (warranties.length === 0) {
-                    warrantiesTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">Nenhuma garantia registrada.</td></tr>';
-                    return;
-                }
-                warrantiesTableBody.innerHTML = '';
-                warranties.forEach(warranty => {
-                    const row = warrantiesTableBody.insertRow();
-                    const statusColor = warranty.status === 'Aprovada' || warranty.status === 'Produto trocado' || warranty.status === 'Reparado' ? 'text-green-600' :
-                                      warranty.status === 'Recusada' ? 'text-red-600' :
-                                      warranty.status === 'Em análise' || warranty.status === 'Aguardando peça' ? 'text-yellow-600' : 'text-gray-600';
-                    row.innerHTML = `
-                        <td class="py-3 px-4">${productMap[warranty.productId] || warranty.productId || 'N/A'}</td>
-                        <td class="py-3 px-4">${customerMap[warranty.customerId] || warranty.customerId || 'N/A'}</td>
-                        <td class="py-3 px-4">${warranty.saleDate ? new Date(warranty.saleDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'N/A'}</td>
-                        <td class="py-3 px-4 font-semibold ${statusColor}">${warranty.status || 'N/A'}</td>
-                        <td class="py-3 px-4 whitespace-nowrap">
-                            <button class="text-blue-600 hover:text-blue-800 mr-2" title="Editar"><i class="fas fa-edit"></i></button>
-                            <button class="text-red-600 hover:text-red-800" title="Excluir"><i class="fas fa-trash"></i></button>
-                        </td>
-                    `;
-                    row.querySelector('.fa-edit').parentElement.onclick = () => editWarranty(warranty);
-                    row.querySelector('.fa-trash').parentElement.onclick = () => deleteWarranty(warranty.id);
-                });
-            } catch (error) {
-                console.error("Error loading warranties:", error);
-                warrantiesTableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-500">Erro ao carregar garantias: ${error.message}</td></tr>`;
-            }
-        }
+        const warrantyFormHTML=(w={})=>`<input type="hidden" name="id" value="${w.id||''}"><div class="mt-4"><label class="form-label">Produto:</label><select name="productId" id="warrantyProductId" class="input-field" required></select></div><div class="mt-4"><label class="form-label">Cliente:</label><select name="customerId" id="warrantyCustomerId" class="input-field" required></select></div><div class="mt-4"><label class="form-label">Mecânico (opc.):</label><select name="mechanicId" id="warrantyMechanicId" class="input-field"></select></div><div class="mt-4"><label class="form-label">Data Venda:</label><input type="date" name="saleDate" class="input-field" value="${w.saleDate||''}" required></div><div class="mt-4"><label class="form-label">Nota Fiscal:</label><input type="text" name="invoiceNumber" class="input-field" value="${w.invoiceNumber||''}"></div><div class="mt-4"><label class="form-label">Problema:</label><textarea name="problemDescription" class="input-field" rows="3" required>${w.problemDescription||''}</textarea></div><div class="mt-4"><label class="form-label">Status:</label><select name="status" class="input-field" required>${warrantyStatusOptions.map(s=>`<option value="${s}" ${w.status===s?'selected':''}>${s}</option>`).join('')}</select></div><div class="mt-4"><label class="form-label">Data Resolução:</label><input type="date" name="resolutionDate" class="input-field" value="${w.resolutionDate||''}"></div><div class="mt-4"><label class="form-label">Obs:</label><textarea name="notes" class="input-field" rows="2">${w.notes||''}</textarea></div><button type="submit" class="btn btn-primary mt-6 w-full">${w.id?'Atualizar':'Salvar'} Garantia</button>`;
+        async function populateSelectWithOptions(elId,coll,nameF,selId=null,place="Selecione"){const el=document.getElementById(elId);if(!el)return;el.innerHTML=`<option value="">Carregando...</option>`;try{const items=await getData(coll);if(items.length===0){el.innerHTML=`<option value="">Nenhum cadastrado</option>`;return;}el.innerHTML=`<option value="">${place}</option>`;items.forEach(i=>{const o=document.createElement('option');o.value=i.id;o.textContent=i[nameF]||i.name||'N/A';if(i.id===selId)o.selected=true;el.appendChild(o);});}catch(e){el.innerHTML=`<option value="">Erro</option>`;}}
+        addWarrantyBtn.onclick=()=>{openModal('Nova Garantia',warrantyFormHTML(),async d=>{await addData(COLLECTIONS.WARRANTIES,d);loadWarranties();loadDashboardData();});populateSelectWithOptions('warrantyProductId',COLLECTIONS.PRODUCTS,'name');populateSelectWithOptions('warrantyCustomerId',COLLECTIONS.CUSTOMERS,'name');populateSelectWithOptions('warrantyMechanicId',COLLECTIONS.MECHANICS,'name',null,'Selecione Mecânico (Opcional)');};
+        async function editWarranty(w){openModal('Editar Garantia',warrantyFormHTML(w),async d=>{await updateData(COLLECTIONS.WARRANTIES,w.id,d);loadWarranties();loadDashboardData();},w);populateSelectWithOptions('warrantyProductId',COLLECTIONS.PRODUCTS,'name',w.productId);populateSelectWithOptions('warrantyCustomerId',COLLECTIONS.CUSTOMERS,'name',w.customerId);populateSelectWithOptions('warrantyMechanicId',COLLECTIONS.MECHANICS,'name',w.mechanicId, 'Selecione Mecânico (Opcional)');}
+        async function deleteWarranty(id){showConfirmModal('Excluir',`Excluir esta garantia?`,async()=>{try{await deleteData(COLLECTIONS.WARRANTIES,id);showModalMessage("Sucesso",`Garantia excluída.`);loadWarranties();loadDashboardData();}catch(e){showModalMessage("Erro",`Excluir garantia: ${e.message}`);}});};
+        async function loadWarranties(){if(!isAuthReady||!db)return;warrantiesTableBody.innerHTML='<tr><td colspan="5" class="text-center py-4"><div class="loading-spinner"></div></td></tr>';try{const wars=await getData(COLLECTIONS.WARRANTIES);const prods=await getData(COLLECTIONS.PRODUCTS);const custs=await getData(COLLECTIONS.CUSTOMERS);const pMap=prods.reduce((m,i)=>{m[i.id]=i.name;return m;},{});const cMap=custs.reduce((m,i)=>{m[i.id]=i.name;return m;},{});if(wars.length===0){warrantiesTableBody.innerHTML='<tr><td colspan="5" class="text-center py-4">Nenhuma garantia.</td></tr>';return;}warrantiesTableBody.innerHTML='';wars.forEach(w=>{const r=warrantiesTableBody.insertRow();const sColor=w.status==="Aprovada"||w.status==="Produto trocado"||w.status==="Reparado"?'text-green-600':w.status==="Recusada"?'text-red-600':w.status==="Em análise"||w.status==="Aguardando peça"?'text-yellow-600':'text-gray-600';r.innerHTML=`<td class="py-3 px-4">${pMap[w.productId]||w.productId||'N/A'}</td><td class="py-3 px-4">${cMap[w.customerId]||w.customerId||'N/A'}</td><td class="py-3 px-4">${w.saleDate?new Date(w.saleDate+'T00:00:00').toLocaleDateString('pt-BR'):'N/A'}</td><td class="py-3 px-4 font-semibold ${sColor}">${w.status||'N/A'}</td><td class="py-3 px-4"><button class="text-blue-600 mr-2"><i class="fas fa-edit"></i></button><button class="text-red-600"><i class="fas fa-trash"></i></button></td>`;r.querySelector('.fa-edit').parentElement.onclick=()=>editWarranty(w);r.querySelector('.fa-trash').parentElement.onclick=()=>deleteWarranty(w.id);});}catch(e){warrantiesTableBody.innerHTML=`<tr><td colspan="5" class="text-center py-4 text-red-500">Erro: ${e.message}</td></tr>`;}}
 
         // --- Dashboard Data ---
-        async function loadDashboardData() {
-            if (!isAuthReady || !db) return;
-            try {
-                const products = await getData(COLLECTIONS.PRODUCTS);
-                const customers = await getData(COLLECTIONS.CUSTOMERS);
-                const warranties = await getData(COLLECTIONS.WARRANTIES);
-
-                document.getElementById('totalProducts').textContent = products.length;
-                document.getElementById('totalCustomers').textContent = customers.length;
-
-                const activeWarranties = warranties.filter(w =>
-                    w.status === "Em análise" || w.status === "Aguardando peça" || w.status === "Aprovada" 
-                ).length;
-                document.getElementById('activeWarranties').textContent = activeWarranties;
-
-            } catch (error) {
-                console.error("Error loading dashboard data:", error);
-                showModalMessage("Erro no Dashboard", "Não foi possível carregar os dados do dashboard.");
-            }
-        }
+        async function loadDashboardData(){if(!isAuthReady||!db)return;try{const p=await getData(COLLECTIONS.PRODUCTS);const c=await getData(COLLECTIONS.CUSTOMERS);const w=await getData(COLLECTIONS.WARRANTIES);document.getElementById('totalProducts').textContent=p.length;document.getElementById('totalCustomers').textContent=c.length;const aW=w.filter(i=>i.status==="Em análise"||i.status==="Aguardando peça"||i.status==="Aprovada").length;document.getElementById('activeWarranties').textContent=aW;}catch(e){showModalMessage("Erro Dashboard",`Carregar dados: ${e.message}`);}}
 
         // --- Initial Load ---
         document.addEventListener('DOMContentLoaded', () => {

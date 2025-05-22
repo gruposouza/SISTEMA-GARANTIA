@@ -1,0 +1,28 @@
+CHAVES NÃO RESTRITAS
+
+APIs selecionadas:
+Firebase Realtime Database Management API
+Firebase Hosting API
+Firebase Rules API
+Cloud SQL Admin API
+Cloud Datastore API
+FCM Registration API
+Firebase Management API
+Firebase App Check API
+Firebase App Distribution API
+Firebase App Hosting API
+Firebase App Testers API
+Firebase Data Connect API
+Firebase Dynamic Links API
+Firebase In-App Messaging API
+Firebase Installations API
+Firebase ML API
+Firebase Remote Config API
+Firebase Remote Config Realtime API
+Cloud Storage for Firebase API
+Firebase AI Logic API
+Cloud Firestore API
+Identity Toolkit API
+Cloud Logging API
+ML Kit API
+Token Service API
